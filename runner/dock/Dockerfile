@@ -4,7 +4,6 @@ RUN apt-get update
 ENV DEBIAN_FRONTEND noninteractive
 
 ENV INITRD No
-ENV LANG en_US.UTF-8
 ENV GOVERSION 1.9.1
 ENV GOROOT /opt/go
 ENV GOPATH /root/.go

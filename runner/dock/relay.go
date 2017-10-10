@@ -57,7 +57,7 @@ func main(){
     go func(){
     	io.Copy(in,conn)
     	fmt.Println("Done copying from command to socket")
-    	timeToExit <- true
+    	in.Close() // we're done reading input, not quite done with the rest yet
     }()
 
     go func(){

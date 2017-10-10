@@ -1,6 +1,5 @@
-#!/usr/local/bin/python3
+#!/usr/bin/python3
 import sys
-
 def run():
 	numRounds=1 # number of rounds starts at 1 because yall don't know how to program
 	opponentMoves=[]
@@ -16,7 +15,7 @@ def run():
 			sys.stdout.buffer.write(b"\x00")
 			myMoves.append(False)
 			# possible outputs are \x00 and \x01. anything else is invalid.
-		
+		sys.stdout.flush()
 
 		theirMove = sys.stdin.buffer.read(1)
 
@@ -41,8 +40,18 @@ def main(rounds, opMoves, myMoves): # example tit for tat
 		return True
 	if opMoves[-1] == 0:
 		return False
-	# a way to check if your code is working: printf "\x00\x00\x01\x01" | python program.py | hexdump
-	# it will print out what it would move, in the same format of 00 = defect, 01 = coop
+	# a way to check if your code is working: 
+
+	# printf "\x00\x00\x01\x01\x00" | python3 program.py | hexdump
+
+	# it will print out what it would move (in the same format of 00 = defect, 01 = coop) against defect defect coop coop defect
+	# if your program prints out anything but \x00 or \x01 it is invalid.
+
+	# example correct tit for tat output
+	# $ printf "\x00\x00\x01\x01" | python3 example.py | hexdump
+	# 0000000 01 00 00 01 01                                 
+	# 0000005
+	# $ 
 
 
 
