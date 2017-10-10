@@ -93,7 +93,7 @@ func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, Bav
 
 
 
-	time.Sleep(50*time.Millisecond) // go run relay.go may take time to start
+	time.Sleep(100*time.Millisecond) // go run relay.go may take time to start
 
 	// cd dock && docker build .
 	//dockerImage := "9e983c4697fc"
