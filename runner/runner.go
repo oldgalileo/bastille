@@ -1,31 +1,33 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"math/rand"
-	"fmt"
 	"net"
 	"os/exec"
 	"strings"
 	"time"
 )
-func main(){
-	contenders:=[]string{"../examples/random.py","../examples/titfortat.py","../examples/allcoop.py","../examples/alldefect.py"}
-	for i:=0; i<len(contenders); i++{
-		for j:=0; j<len(contenders); j++{
-			if i==j{
+
+func main() {
+	contenders := []string{"../examples/random.py", "../examples/titfortat.py", "../examples/allcoop.py", "../examples/alldefect.py"}
+	for i := 0; i < len(contenders); i++ {
+		for j := 0; j < len(contenders); j++ {
+			if i == j {
 				continue
 			}
-			a,b,rounds:=playAgainst(contenders[i],contenders[j])
-			fmt.Println(contenders[i],"vs",contenders[j])
-			fmt.Println(contenders[i],"avg:",a)
-			fmt.Println(contenders[j],"avg:",b)
-			fmt.Println("Rounds:",rounds)
+			a, b, rounds := playAgainst(contenders[i], contenders[j])
+			fmt.Println(contenders[i], "vs", contenders[j])
+			fmt.Println(contenders[i], "avg:", a)
+			fmt.Println(contenders[j], "avg:", b)
+			fmt.Println("Rounds:", rounds)
 			fmt.Println()
 		}
 	}
-	
+
 }
+
 //takes in two executable paths
 //starts up two of these dockers, with port 10000 in the VM bound to two random numbers on the host
 //copies in the two executables to /code in both images
@@ -34,39 +36,37 @@ func main(){
 
 func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int) {
 
-	imagIDRaw,err:=exec.Command("docker","build","-q","dock").CombinedOutput()
-	if err!=nil{
+	imagIDRaw, err := exec.Command("docker", "build", "-q", "dock").CombinedOutput()
+	if err != nil {
 		fmt.Println(string(imagIDRaw))
 		panic(err)
 	}
-	imagID:=strings.Trim(string(imagIDRaw),"\n")
+	imagID := strings.Trim(string(imagIDRaw), "\n")
 	//fmt.Println("Image id:",imagID)
 
-	containerARaw,err:=exec.Command("docker","run","--rm","-d","-p","5000:10000",imagID).CombinedOutput()
-	if err!=nil{
+	containerARaw, err := exec.Command("docker", "run", "--rm", "-d", "-p", "5000:10000", imagID).CombinedOutput()
+	if err != nil {
 		fmt.Println(string(containerARaw))
 		panic(err)
 	}
-	containerA:=strings.Trim(string(containerARaw),"\n")
+	containerA := strings.Trim(string(containerARaw), "\n")
 	//fmt.Println(containerA)
-	err=exec.Command("docker","cp",pathToExecA,containerA+":/code").Run()
-	if err!=nil{
+	err = exec.Command("docker", "cp", pathToExecA, containerA+":/code").Run()
+	if err != nil {
 		panic(err)
 	}
 
-
-	containerBRaw,err:=exec.Command("docker","run","--rm","-d","-p","6000:10000",imagID).CombinedOutput()
-	if err!=nil{
+	containerBRaw, err := exec.Command("docker", "run", "--rm", "-d", "-p", "6000:10000", imagID).CombinedOutput()
+	if err != nil {
 		fmt.Println(string(containerBRaw))
 		panic(err)
 	}
-	containerB:=strings.Trim(string(containerBRaw),"\n")
+	containerB := strings.Trim(string(containerBRaw), "\n")
 
-	err=exec.Command("docker","cp",pathToExecB,containerB+":/code").Run()
-	if err!=nil{
+	err = exec.Command("docker", "cp", pathToExecB, containerB+":/code").Run()
+	if err != nil {
 		panic(err)
 	}
-
 
 	// cd dock && docker build .
 	//dockerImage := "9e983c4697fc"
@@ -79,14 +79,13 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 	//containerB := ""
 	// docker cp $(pathToExecB) $(containerB):/code
 
-
 	A, err := net.Dial("tcp", "localhost:5000")
-	if err!=nil{
+	if err != nil {
 		panic(err)
 	}
 	defer A.Close()
 	B, err := net.Dial("tcp", "localhost:6000")
-	if err!=nil{
+	if err != nil {
 		panic(err)
 	}
 	defer B.Close()
@@ -97,24 +96,24 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 	numTurns := 0
 
 	for {
-		A.SetDeadline(time.Now().Add(50*time.Millisecond))
-		B.SetDeadline(time.Now().Add(50*time.Millisecond))
+		A.SetDeadline(time.Now().Add(50 * time.Millisecond))
+		B.SetDeadline(time.Now().Add(50 * time.Millisecond))
 		Am := make([]byte, 1)
-		_,err=io.ReadFull(A, Am)
-		if err!=nil{
+		_, err = io.ReadFull(A, Am)
+		if err != nil {
 			panic(err) // todo dont panic, just disqualify
 		}
 		Bm := make([]byte, 1)
-		_,err=io.ReadFull(B, Bm)
-		if err!=nil{
+		_, err = io.ReadFull(B, Bm)
+		if err != nil {
 			panic(err) // todo dont panic, just disqualify
 		}
 
-		if Am[0]!=0 && Am[0]!=1{
+		if Am[0] != 0 && Am[0] != 1 {
 			panic("A made invalid move") // todo dont panic, just disqualify
 		}
 
-		if Bm[0]!=0 && Bm[0]!=1{
+		if Bm[0] != 0 && Bm[0] != 1 {
 			panic("B made invalid move") // todo dont panic, just disqualify
 		}
 

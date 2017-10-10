@@ -1,15 +1,14 @@
 package main //this is not part of the package system it just gets copied into the docker image
-import(
+import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"os/exec"
 	"os/signal"
-	"os"
 )
 
-
-func main(){
+func main() {
 	ln, err := net.Listen("tcp", ":10000")
 	if err != nil {
 		panic(err)
@@ -22,8 +21,7 @@ func main(){
 	defer conn.Close()
 	fmt.Println("Relay has received its connection") // one time use
 
-	os.Chmod("/code",0777)
-
+	os.Chmod("/code", 0777)
 
 	signalChan := make(chan os.Signal, 1)
 
@@ -32,10 +30,10 @@ func main(){
 	signal.Notify(signalChan, os.Interrupt)
 
 	go func() {
-	    for _ = range signalChan {
-		        fmt.Println("\nReceived an interrupt, stopping services...\n")
-	        timeToExit <- true
-	    }
+		for _ = range signalChan {
+			fmt.Println("\nReceived an interrupt, stopping services...\n")
+			timeToExit <- true
+		}
 	}()
 
 	cmd := exec.Command("/code")
@@ -48,32 +46,32 @@ func main(){
 	}
 	defer in.Close()
 
-    out, err := cmd.StdoutPipe()
-    if err != nil {
+	out, err := cmd.StdoutPipe()
+	if err != nil {
 		panic(err)
 	}
 	defer out.Close()
 
-    go func(){
-    	io.Copy(in,conn)
-    	fmt.Println("Done copying from command to socket")
-    	in.Close() // we're done reading input, not quite done with the rest yet
-    }()
+	go func() {
+		io.Copy(in, conn)
+		fmt.Println("Done copying from command to socket")
+		in.Close() // we're done reading input, not quite done with the rest yet
+	}()
 
-    go func(){
-    	io.Copy(conn,out)
-    	fmt.Println("Done copying from socket to command")
-    	timeToExit <- true
-    }()
+	go func() {
+		io.Copy(conn, out)
+		fmt.Println("Done copying from socket to command")
+		timeToExit <- true
+	}()
 
-    cmd.Start()
-    go func(){
-    	 cmd.Wait()
-    	 fmt.Println("Command done waiting")
-    	 timeToExit <- true
-    }()
-   
-   	<- timeToExit
-   	fmt.Println("Exiting")
+	cmd.Start()
+	go func() {
+		cmd.Wait()
+		fmt.Println("Command done waiting")
+		timeToExit <- true
+	}()
+
+	<-timeToExit
+	fmt.Println("Exiting")
 
 }
