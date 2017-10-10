@@ -31,4 +31,6 @@ RUN apt-get update \
 
 ADD . /stuff
 
-CMD ["go","run","/stuff/relay.go"]
+RUN cd /stuff && go build relay.go
+
+CMD ["/stuff/relay"]
