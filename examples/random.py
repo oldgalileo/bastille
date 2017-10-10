@@ -31,7 +31,7 @@ def run():
 		numRounds=numRounds+1
 #your code below this line
 
-def main(rounds, opMoves, myMoves): # example tit for tat
+def main(rounds, opMoves, myMoves): # example random
 	return random.random()>0.5
 
 
