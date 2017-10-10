@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import sys
-import random
 def run():
 	numRounds=1 # number of rounds starts at 1 because yall don't know how to program
 	opponentMoves=[]
@@ -32,7 +31,7 @@ def run():
 #your code below this line
 
 def main(rounds, opMoves, myMoves): # example tit for tat
-	return random.random()>0.5
+	return False
 
 
 	# a way to check if your code is working: 

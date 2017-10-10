@@ -10,7 +10,21 @@ import (
 	"time"
 )
 func main(){
-	playAgainst("../examples/random.py","../examples/example.bash")
+	contenders:=[]string{"../examples/random.py","../examples/titfortat.py","../examples/allcoop.py","../examples/alldefect.py"}
+	for i:=0; i<len(contenders); i++{
+		for j:=0; j<len(contenders); j++{
+			if i==j{
+				continue
+			}
+			a,b,rounds:=playAgainst(contenders[i],contenders[j])
+			fmt.Println(contenders[i],"vs",contenders[j])
+			fmt.Println(contenders[i],"avg:",a)
+			fmt.Println(contenders[j],"avg:",b)
+			fmt.Println("Rounds:",rounds)
+			fmt.Println()
+		}
+	}
+	
 }
 //takes in two executable paths
 //starts up two of these dockers, with port 10000 in the VM bound to two random numbers on the host
@@ -26,7 +40,7 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 		panic(err)
 	}
 	imagID:=strings.Trim(string(imagIDRaw),"\n")
-	fmt.Println("Image id:",imagID)
+	//fmt.Println("Image id:",imagID)
 
 	containerARaw,err:=exec.Command("docker","run","--rm","-d","-p","5000:10000",imagID).CombinedOutput()
 	if err!=nil{
@@ -34,7 +48,7 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 		panic(err)
 	}
 	containerA:=strings.Trim(string(containerARaw),"\n")
-	fmt.Println(containerA)
+	//fmt.Println(containerA)
 	err=exec.Command("docker","cp",pathToExecA,containerA+":/code").Run()
 	if err!=nil{
 		panic(err)
@@ -67,12 +81,15 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 
 
 	A, err := net.Dial("tcp", "localhost:5000")
-
+	if err!=nil{
+		panic(err)
+	}
+	defer A.Close()
 	B, err := net.Dial("tcp", "localhost:6000")
 	if err!=nil{
 		panic(err)
 	}
-	fmt.Println("whoa made the connection!")
+	defer B.Close()
 
 	AScore := 0
 	BScore := 0
@@ -80,6 +97,8 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 	numTurns := 0
 
 	for {
+		A.SetDeadline(time.Now().Add(50*time.Millisecond))
+		B.SetDeadline(time.Now().Add(50*time.Millisecond))
 		Am := make([]byte, 1)
 		_,err=io.ReadFull(A, Am)
 		if err!=nil{
@@ -102,8 +121,6 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 		Amove := Am[0] == 1
 		Bmove := Bm[0] == 1
 
-		fmt.Println("A moved",Amove,"B moved",Bmove)
-
 		AScore += value(Amove, Bmove)
 		BScore += value(Bmove, Amove)
 
@@ -123,6 +140,7 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 			break
 		}
 	}
+
 	return float32(AScore) / float32(numTurns), float32(BScore) / float32(numTurns), numTurns
 }
 
