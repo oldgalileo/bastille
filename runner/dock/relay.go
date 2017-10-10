@@ -1,12 +1,8 @@
 package main //this is not part of the package system it just gets copied into the docker image
 import(
-	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
-	"os"
-	"sync"
-	"time"
 	"os/exec"
 )
 
@@ -27,9 +23,10 @@ func main(){
 	in, _ := cmd.StdinPipe()
     out, _ := cmd.StdoutPipe()
 
-    go io.Copy(conn,in)
-    go io.Copy(out,conn)
+    go io.Copy(in,conn)
+    go io.Copy(conn,out)
 
     cmd.Start()
+    cmd.Wait()
 
 }
