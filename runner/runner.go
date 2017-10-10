@@ -3,10 +3,16 @@ package main
 import (
 	"io"
 	"math/rand"
+	"fmt"
+	"context"
 	"net"
 	"time"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 )
-
+func main(){
+	playAgainst("example.py","example.bash")
+}
 //takes in two executable paths
 //starts up two of these dockers, with port 10000 in the VM bound to two random numbers on the host
 //copies in the two executables to /code in both images
@@ -15,19 +21,38 @@ import (
 
 func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int) {
 
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		panic(err)
+	}
+
+	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, container := range containers {
+		fmt.Printf("%s %s\n", container.ID[:10], container.Image)
+	}
+
+
 	// cd dock && docker build .
-	dockerImage := "9e983c4697fc"
+	//dockerImage := "9e983c4697fc"
 
 	// docker run --rm -p 5000:10000 $(dockerImage)
-	containerA := ""
+	//containerA := ""
 	// docker cp $(pathToExecA) $(containerA):/code
 
 	// docker run --rm -p 6000:10000 $(dockerImage)
-	containerB := ""
+	//containerB := ""
 	// docker cp $(pathToExecB) $(containerB):/code
 
 	A, err := net.Dial("tcp", "localhost:5000")
+
 	B, err := net.Dial("tcp", "localhost:6000")
+	if err!=nil{
+		panic(err)
+	}
 
 	AScore := 0
 	BScore := 0
@@ -73,7 +98,7 @@ const P = 1
 
 var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-func value(my bool, their bool) float32 {
+func value(my bool, their bool) int {
 	if my {
 		if their {
 			return R
