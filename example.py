@@ -28,9 +28,6 @@ def run():
 			opponentMoves.append(False)
 
 		numRounds=numRounds+1
-
-
-
 #your code below this line
 
 def main(rounds, opMoves, myMoves): # example tit for tat
@@ -40,6 +37,8 @@ def main(rounds, opMoves, myMoves): # example tit for tat
 		return True
 	if opMoves[-1] == 0:
 		return False
+
+
 	# a way to check if your code is working: 
 
 	# printf "\x00\x00\x01\x01\x00" | python3 program.py | hexdump
