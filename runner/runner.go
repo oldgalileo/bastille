@@ -119,14 +119,16 @@ func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, Bav
 	numTurns := 0
 	A.SetDeadline(time.Now().Add(2 * time.Second)) // generous deadline for first move
 	B.SetDeadline(time.Now().Add(2 * time.Second))
+	Am := make([]byte, 1)
+	Bm := make([]byte, 1)
 	for {
-		Am := make([]byte, 1)
+		
 		_, err = io.ReadFull(A, Am)
 		if err != nil {
 			fmt.Println("Disqualified due to stream closed")
 			return 0,0,0,true,false
 		}
-		Bm := make([]byte, 1)
+		
 		_, err = io.ReadFull(B, Bm)
 		if err != nil {
 			fmt.Println("Disqualified due to stream closed")
