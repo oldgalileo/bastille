@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -45,6 +46,27 @@ func init(){
 	}
 	imagID = strings.Trim(string(imagIDRaw), "\n")
 }
+
+func makeMeAContainerBaby() (string,int){
+	
+	for i:=0; i<100; i++{
+		port:=5000+rand.New(rand.NewSource(time.Now().UnixNano())).Intn(4000)
+		containerRaw, err := exec.Command("docker", "run", "--rm", "-d", "-p", strconv.Itoa(port)+":10000", imagID).CombinedOutput()
+		if err != nil {
+
+			if i<99{
+				continue
+			}
+			fmt.Println(string(containerRaw))
+			panic(err)
+		}
+		container := strings.Trim(string(containerRaw), "\n")
+		return container,port
+
+	}
+	panic("shouldn't be able to get to here")
+
+}
 //takes in two executable paths
 //starts up two of these dockers, with port 10000 in the VM bound to two random numbers on the host
 //copies in the two executables to /code in both images
@@ -54,24 +76,15 @@ func init(){
 func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, BavgScore float32, numRounds int,aDisqualified bool,bDisqualified bool) {
 	//fmt.Println("Image id:",imagID)
 	time.Sleep(500*time.Millisecond)
-	containerARaw, err := exec.Command("docker", "run", "--rm", "-d", "-p", "5000:10000", imagID).CombinedOutput()
-	if err != nil {
-		fmt.Println(string(containerARaw))
-		panic(err)
-	}
-	containerA := strings.Trim(string(containerARaw), "\n")
+	
+	containerA,portA:=makeMeAContainerBaby()
 	//fmt.Println(containerA)
-	err = exec.Command("docker", "cp", pathToExecA, containerA+":/code").Run()
+	err := exec.Command("docker", "cp", pathToExecA, containerA+":/code").Run()
 	if err != nil {
 		panic(err)
 	}
 
-	containerBRaw, err := exec.Command("docker", "run", "--rm", "-d", "-p", "6000:10000", imagID).CombinedOutput()
-	if err != nil {
-		fmt.Println(string(containerBRaw))
-		panic(err)
-	}
-	containerB := strings.Trim(string(containerBRaw), "\n")
+	containerB,portB:=makeMeAContainerBaby()
 
 	err = exec.Command("docker", "cp", pathToExecB, containerB+":/code").Run()
 	if err != nil {
@@ -89,12 +102,12 @@ func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, Bav
 	//containerB := ""
 	// docker cp $(pathToExecB) $(containerB):/code
 
-	A, err := net.Dial("tcp", "localhost:5000")
+	A, err := net.Dial("tcp", "localhost:"+strconv.Itoa(portA))
 	if err != nil {
 		panic(err)
 	}
 	defer A.Close()
-	B, err := net.Dial("tcp", "localhost:6000")
+	B, err := net.Dial("tcp", "localhost:"+strconv.Itoa(portB))
 	if err != nil {
 		panic(err)
 	}
