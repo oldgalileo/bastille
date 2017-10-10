@@ -15,9 +15,17 @@ RUN cd /opt && wget https://storage.googleapis.com/golang/go${GOVERSION}.linux-a
     tar zxf go${GOVERSION}.linux-amd64.tar.gz && rm go${GOVERSION}.linux-amd64.tar.gz && \
     ln -s /opt/go/bin/go /usr/bin/ && \
     mkdir $GOPATH
-# don't modify above this line
 
 RUN apt-get install -y nano
+
+RUN apt-get update \
+  && apt-get install -y python3-pip python3-dev \
+  && cd /usr/local/bin \
+  && ln -s /usr/bin/python3 python \
+  && pip3 install --upgrade pip
+
+
+
 
 
 
