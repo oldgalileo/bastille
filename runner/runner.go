@@ -4,14 +4,13 @@ import (
 	"io"
 	"math/rand"
 	"fmt"
-	"context"
 	"net"
+	"os/exec"
+	"strings"
 	"time"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 )
 func main(){
-	playAgainst("example.py","example.bash")
+	playAgainst("../examples/random.py","../examples/example.bash")
 }
 //takes in two executable paths
 //starts up two of these dockers, with port 10000 in the VM bound to two random numbers on the host
@@ -21,18 +20,37 @@ func main(){
 
 func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int) {
 
-	cli, err := client.NewEnvClient()
-	if err != nil {
+	imagIDRaw,err:=exec.Command("docker","build","-q","dock").CombinedOutput()
+	if err!=nil{
+		fmt.Println(string(imagIDRaw))
+		panic(err)
+	}
+	imagID:=strings.Trim(string(imagIDRaw),"\n")
+	fmt.Println("Image id:",imagID)
+
+	containerARaw,err:=exec.Command("docker","run","--rm","-d","-p","5000:10000",imagID).CombinedOutput()
+	if err!=nil{
+		fmt.Println(string(containerARaw))
+		panic(err)
+	}
+	containerA:=strings.Trim(string(containerARaw),"\n")
+	fmt.Println(containerA)
+	err=exec.Command("docker","cp",pathToExecA,containerA+":/code").Run()
+	if err!=nil{
 		panic(err)
 	}
 
-	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{})
-	if err != nil {
+
+	containerBRaw,err:=exec.Command("docker","run","--rm","-d","-p","6000:10000",imagID).CombinedOutput()
+	if err!=nil{
+		fmt.Println(string(containerBRaw))
 		panic(err)
 	}
+	containerB:=strings.Trim(string(containerBRaw),"\n")
 
-	for _, container := range containers {
-		fmt.Printf("%s %s\n", container.ID[:10], container.Image)
+	err=exec.Command("docker","cp",pathToExecB,containerB+":/code").Run()
+	if err!=nil{
+		panic(err)
 	}
 
 
@@ -47,12 +65,14 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 	//containerB := ""
 	// docker cp $(pathToExecB) $(containerB):/code
 
+
 	A, err := net.Dial("tcp", "localhost:5000")
 
 	B, err := net.Dial("tcp", "localhost:6000")
 	if err!=nil{
 		panic(err)
 	}
+	fmt.Println("whoa made the connection!")
 
 	AScore := 0
 	BScore := 0
@@ -61,12 +81,28 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 
 	for {
 		Am := make([]byte, 1)
-		io.ReadFull(A, Am)
+		_,err=io.ReadFull(A, Am)
+		if err!=nil{
+			panic(err) // todo dont panic, just disqualify
+		}
 		Bm := make([]byte, 1)
-		io.ReadFull(B, Bm)
+		_,err=io.ReadFull(B, Bm)
+		if err!=nil{
+			panic(err) // todo dont panic, just disqualify
+		}
+
+		if Am[0]!=0 && Am[0]!=1{
+			panic("A made invalid move") // todo dont panic, just disqualify
+		}
+
+		if Bm[0]!=0 && Bm[0]!=1{
+			panic("B made invalid move") // todo dont panic, just disqualify
+		}
 
 		Amove := Am[0] == 1
 		Bmove := Bm[0] == 1
+
+		fmt.Println("A moved",Amove,"B moved",Bmove)
 
 		AScore += value(Amove, Bmove)
 		BScore += value(Bmove, Amove)
@@ -82,6 +118,7 @@ func playAgainst(pathToExecA string, pathToExecB string) (float32, float32, int)
 			A.Write([]byte{0})
 		}
 
+		numTurns++
 		if rnd.Float32() < 0.0003 && numTurns > 100 {
 			break
 		}
