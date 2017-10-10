@@ -19,12 +19,12 @@ func main() {
 				continue
 			}
 			a, b, rounds, adisqual, bdisqual := playAgainst(contenders[i], contenders[j])
-			if adisqual{
-				fmt.Println("WARNING contender A: ",contenders[i]," IS DISQUALIFIED")
+			if adisqual {
+				fmt.Println("WARNING contender A: ", contenders[i], " IS DISQUALIFIED")
 				continue
 			}
-			if bdisqual{
-				fmt.Println("WARNING contender B: ",contenders[j]," IS DISQUALIFIED")
+			if bdisqual {
+				fmt.Println("WARNING contender B: ", contenders[j], " IS DISQUALIFIED")
 				continue
 			}
 			fmt.Println(contenders[i], "vs", contenders[j])
@@ -38,7 +38,8 @@ func main() {
 }
 
 var imagID string
-func init(){
+
+func init() {
 	imagIDRaw, err := exec.Command("docker", "build", "-q", "dock").CombinedOutput()
 	if err != nil {
 		fmt.Println(string(imagIDRaw))
@@ -47,53 +48,51 @@ func init(){
 	imagID = strings.Trim(string(imagIDRaw), "\n")
 }
 
-func makeMeAContainerBaby() (string,int){
-	
-	for i:=0; i<100; i++{
-		port:=5000+rand.New(rand.NewSource(time.Now().UnixNano())).Intn(4000)
+func makeMeAContainerBaby() (string, int) {
+
+	for i := 0; i < 100; i++ {
+		port := 5000 + rand.New(rand.NewSource(time.Now().UnixNano())).Intn(4000)
 		containerRaw, err := exec.Command("docker", "run", "--rm", "-d", "-p", strconv.Itoa(port)+":10000", imagID).CombinedOutput()
 		if err != nil {
 
-			if i<99{
+			if i < 99 {
 				continue
 			}
 			fmt.Println(string(containerRaw))
 			panic(err)
 		}
 		container := strings.Trim(string(containerRaw), "\n")
-		return container,port
+		return container, port
 
 	}
 	panic("shouldn't be able to get to here")
 
 }
+
 //takes in two executable paths
 //starts up two of these dockers, with port 10000 in the VM bound to two random numbers on the host
 //copies in the two executables to /code in both images
 //makes a connection to localhost:whatever, which is docker:10000 on both. this makes relay.go start the provided /code, and forwards stdin/stdout over this socket
 //runs iterated prisoner's dilemma, and finally returns number of rounds and final socre
 
-func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, BavgScore float32, numRounds int,aDisqualified bool,bDisqualified bool) {
+func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, BavgScore float32, numRounds int, aDisqualified bool, bDisqualified bool) {
 	//fmt.Println("Image id:",imagID)
 
-	containerA,portA:=makeMeAContainerBaby()
+	containerA, portA := makeMeAContainerBaby()
 	//fmt.Println(containerA)
 	err := exec.Command("docker", "cp", pathToExecA, containerA+":/code").Run()
 	if err != nil {
 		panic(err)
 	}
 
-	containerB,portB:=makeMeAContainerBaby()
+	containerB, portB := makeMeAContainerBaby()
 
 	err = exec.Command("docker", "cp", pathToExecB, containerB+":/code").Run()
 	if err != nil {
 		panic(err)
 	}
 
-
-
-
-	time.Sleep(100*time.Millisecond) // go run relay.go may take time to start
+	time.Sleep(100 * time.Millisecond) // go run relay.go may take time to start
 
 	// cd dock && docker build .
 	//dockerImage := "9e983c4697fc"
@@ -126,27 +125,27 @@ func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, Bav
 	Am := make([]byte, 1)
 	Bm := make([]byte, 1)
 	for {
-		
+
 		_, err = io.ReadFull(A, Am)
 		if err != nil {
 			fmt.Println("Disqualified due to stream closed")
-			return 0,0,0,true,false
+			return 0, 0, 0, true, false
 		}
-		
+
 		_, err = io.ReadFull(B, Bm)
 		if err != nil {
 			fmt.Println("Disqualified due to stream closed")
-			return 0,0,0,false,true
+			return 0, 0, 0, false, true
 		}
 
 		if Am[0] != 0 && Am[0] != 1 {
 			fmt.Println("A made invalid move")
-			return 0,0,0,true,false
+			return 0, 0, 0, true, false
 		}
 
 		if Bm[0] != 0 && Bm[0] != 1 {
 			fmt.Println("B made invalid move")
-			return 0,0,0,false,true
+			return 0, 0, 0, false, true
 		}
 
 		Amove := Am[0] == 1
@@ -174,7 +173,7 @@ func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, Bav
 		B.SetDeadline(time.Now().Add(50 * time.Millisecond))
 	}
 
-	return float32(AScore) / float32(numTurns), float32(BScore) / float32(numTurns), numTurns,false,false
+	return float32(AScore) / float32(numTurns), float32(BScore) / float32(numTurns), numTurns, false, false
 }
 
 const R = 3
