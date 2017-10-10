@@ -75,8 +75,7 @@ func makeMeAContainerBaby() (string,int){
 
 func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, BavgScore float32, numRounds int,aDisqualified bool,bDisqualified bool) {
 	//fmt.Println("Image id:",imagID)
-	time.Sleep(500*time.Millisecond)
-	
+
 	containerA,portA:=makeMeAContainerBaby()
 	//fmt.Println(containerA)
 	err := exec.Command("docker", "cp", pathToExecA, containerA+":/code").Run()
