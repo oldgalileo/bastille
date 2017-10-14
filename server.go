@@ -12,20 +12,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Server struct {
-	*http.ServeMux
-}
-
-func NewServer() *Server {
-	return &Server{
-		http.NewServeMux(),
-	}
-}
+type Server struct{}
 
 func (s *Server) init() {
 	http.HandleFunc("/upload", HandlerUpload)
 	log.Fatal(http.ListenAndServe(":22101", nil))
 }
+
+func HandlerR
 
 func HandlerUpload(w http.ResponseWriter, r *http.Request) {
 	var localBuff bytes.Buffer
