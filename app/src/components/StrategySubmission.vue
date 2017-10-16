@@ -1,4 +1,6 @@
-<template></template>
+<template>
+  <div class="main"></div>
+</template>
 <script>
   export default {
     name: 'StrategySubmission',
@@ -9,3 +11,9 @@
     }
   }
 </script>
+
+<style scoped="true">
+.main {
+  height: 100%;
+}
+</style>

@@ -1,46 +1,28 @@
 <template>
   <div id="app">
-    <template v-if="isAuthed===true">
       <div class="navbar">
         <div class="content left">
           <div class="logo">Bastille</div>
         </div>
-        <div class="content center">
-          <div class="subtitle">{{ getQuote() }}</div>
-        </div>
+        <!--<div class="content center">-->
+          <!--<div class="subtitle">{{ getQuote() }}</div>-->
+        <!--</div>-->
         <div class="content right">
-          <div class="button">Welcome, {{ googleUser.getBasicProfile().getName() }}</div>
+          <div class="text">Welcome!</div>
+          <div class="button">Upload</div>
+          <div class="button">Leaderboard</div>
         </div>
       </div>
-    </template>
-    <template v-else>
-      <div class="navbar">
-        <div class="content left">
-          <div class="logo">Bastille</div>
-        </div>
-        <div class="content center">
-          <div class="subtitle">{{ getQuote() }}</div>
-        </div>
-        <div class="content right">
-          <router-link to="/login" class="button" :callback="signIn">Sign In</router-link>
-        </div>
-      </div>
-    </template>
     <router-view/>
   </div>
 </template>
 
 <script>
-import gapi from 'gapi-client'
 
 export default {
   name: 'app',
   data () {
     return {
-      isAuthed: false,
-      authError: '',
-      googleAuthObject: null,
-      googleUser: null,
       quotes: [
         'Patrick is already disappointed...',
         'In everything one thing is impossible: rationality.',
@@ -49,78 +31,60 @@ export default {
       ]
     }
   },
-  mounted () {
-    this.initialize()
-  },
-  methods: {
-    getQuote: function () {
-      return this.quotes[Math.floor(Math.random() * this.quotes.length)]
-    },
-    initialize: function () {
-      gapi.load('client:oauth2', initClient.bind(this))
-      function initClient () {
-        gapi.client.init({
-          'apiKey': 'Mm2sQnGVHJ1itd2-6lam9XWz',
-          'clientId': '551253019639-slqo4k5kmueh8t09rrk6p4j5bltfnjf0.apps.googleusercontent.com',
-          'scope': 'profile email'
-        }).then(function () {
-          this.googleAuthObject = gapi.auth2.getAuthInstance()
-          if (this.googleAuthObject.currentUser.get().getBasicProfile()) {
-            this.isAuthed = true
-            this.googleUser = this.googleAuthObject.currentUser.get()
-            this.initializeFormData()
-          }
-        })
-      }
-    },
-    signIn: function () {
-      this.authError = ''
-      this.googleAuthObject.signIn().then(function () {
-        this.updateSignInStatus(true)
-      }.bind(this), function () {
-        this.updateSignInStatus(false)
-      }.bind(this))
-    },
-    updateSignInStatus: function (isAuthed) {
-      if (isAuthed && this.googleAuthObject.currentUser.get().hasGrantedScopes('https://www.googleapis.com/auth/spreadsheets')) {
-        if (this.googleAuthObject.currentUser.get().getBasicProfile().getEmail().split('@')[1] === 'nuevaschool.org') {
-          this.googleUser = this.googleAuthObject.currentUser.get()
-          this.isAuthed = true
-        } else {
-          this.googleAuthObject.disconnect()
-          this.googleAuthObject.signOut()
-          this.authError = 'You must be a member of the "nuevaschool.org" domain to use this application.'
-          this.isAuthed = false
-        }
-      } else {
-        this.googleAuthObject.signOut()
-        this.isAuthed = false
-      }
-    }
-  }
+  mounted () {},
+  methods: {}
 }
 </script>
 
 <style>
+#app {
+  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+  color: #2c3e50;
+  display: flex;
+  justify-content: flex-start;
+  width: 100vw;
+  height: 100vh;
+  align-items: center;
+  flex-flow: column nowrap;
+}
+
+body {
+  margin: 0;
+}
+</style>
+
+<style scoped="true">
+.navbar > * > .logo {
+  font-weight: normal;
+  font-size: 2rem;
+  padding-right: 20px;
+}
+
 .navbar {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
-  height: 5vmin;
+  height: 5%;
+  min-height: 30px;
+  background: white;
   padding: 5px 5px;
   display: flex;
   flex-flow: row wrap;
   justify-content: space-between;
   align-items: center;
-  z-index: 1000;
-  border-bottom: thin solid #BBB;
+  z-index: 100;
+  box-shadow: 0px 1px 0px 0px rgba(0, 0, 0, 0.5);
 }
 
 .navbar > .content {
   display: flex;
   flex-flow: row nowrap;
   align-items: center;
+  height: 100%;
 }
 
 .navbar > .left > * {
@@ -131,24 +95,29 @@ export default {
   margin: 6px 0;
 }
 
-.navbar > .content > .logo {
-  font-weight: normal;
-  font-size: 2rem;
-  padding-right: 20px;
-}
-
 .navbar > .right > * {
   margin: 0 20px 0 0;
 }
 
-.navbar > .content > .button {
-  height: 4vmin;
+.navbar > .right {
+  padding-right: 5px;
+}
+
+
+.navbar > .content > .text, .button {
+  height: 80%;
   display: flex;
   justify-content: center;
   align-items: center;
   user-select: none;
-  width: 80px;
+  min-width: 80px;
   transition: all 0.2s ease;
+  font-weight: bold;
+  text-decoration: none;
+  color: #2c3e50;
+}
+
+.navbar > .content > .button {
   font-weight: bold;
   cursor: pointer;
   cursor: hand;
@@ -158,17 +127,5 @@ export default {
 .navbar > .content > .button:hover {
   border-bottom: 2px solid black;
 }
-
-#app {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  display: flex;
-  justify-content: flex-start;
-  width: 100vw;
-  align-items: center;
-  flex-flow: column nowrap;
-}
 </style>
+
