@@ -3,7 +3,10 @@
     <div class="overlay" v-if="uploading===true">
       <div class="dialog">
         <div class="content">
-          <h1>Hello!</h1>
+          <div class="loader">
+            <div class="inside">Loading</div>
+            <div class="circle"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -220,6 +223,44 @@ section.gray .divider {
   width: 50%;
   height: 30%;
   min-width: 400px;
-  min-height: 175px;
+  min-height: 200px;
+  justify-content: center;
+  align-items: center;
+}
+
+.loader {
+  height: 150px;
+  width: 150px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1200;
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loader > .circle {
+  width: 140px;
+  height: 140px;
+  border: 8px solid rgba(0, 0, 0, 0);
+  border-radius: 50%;
+  border-top: 8px solid #2c3e50;
+  z-index: 1400;
+  position: absolute;
+  animation: rotate 1.5s linear infinite;
+  will-change: transform;
+}
+
+.loader > .inside {
+  width: auto;
+  z-index: 1300;
+  font-size: 1.5rem;
 }
 </style>
