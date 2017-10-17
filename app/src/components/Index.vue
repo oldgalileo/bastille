@@ -1,10 +1,10 @@
 <template>
   <div class="main">
-    <div class="overlay" v-if="uploading===true">
+    <div class="overlay" v-if="popup===true" @click="toggleOverlay">
       <div class="dialog">
         <div class="content">
           <div class="loader">
-            <div class="inside">Loading</div>
+            <div class="inside">Uploading</div>
             <div class="circle"></div>
           </div>
         </div>
@@ -27,7 +27,7 @@
           <p class="paragraph">Please ensure that your code is in an executable format. To test if it can be executed, open up "Terminal" and run:</p>
           <p class="paragraph" style="text-indent: 50px;">sh -c "/path/to/your/strategy"</p>
           <p class="paragraph">If this command succeeds, you can upload your code. Just click the button below and select your file, kick back, and watch yourself lose to always defect.</p>
-          <input type="file" name="strategy" id="strategy" @change="uploadStrategy" class="strategy-input">
+          <input type="file" name="strategy" id="strategy" @change="handleUpload" class="strategy-input">
           <label for="strategy" class="button">Submit</label>
         </div>
       </div>
@@ -48,7 +48,8 @@ export default {
   name: 'Index',
   data () {
     return {
-      uploading: false,
+      popup: false,
+      uploading: 'INACTIVE',
       uploadingResponse: '',
       quotes: [
         'Patrick is already disappointed...',
@@ -59,9 +60,22 @@ export default {
     }
   },
   methods: {
-    uploadStrategy: function () {
+    handleUpload: function () {
       console.log('Halp')
-      this.uploading = true
+      this.uploading = 'UPLOADING'
+      this.toggleOverlay()
+      this.uploadFile()
+    },
+    uploadFile: function () {
+      fetch('api.bastille')
+    },
+    toggleOverlay: function () {
+      console.log('Running')
+      if ((this.uploading !== 'UPLOADING') && this.popup) {
+        this.popup = false
+      } else {
+        this.popup = true
+      }
     }
   }
 }
