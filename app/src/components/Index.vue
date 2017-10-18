@@ -2,11 +2,15 @@
   <div class="main">
     <div class="overlay" v-if="popup===true" @click="toggleOverlay">
       <div class="dialog">
-        <div class="content">
+        <div class="content" v-if="uploading==='RESPONSE'">
           <div class="loader">
             <div class="inside">Uploading</div>
             <div class="circle"></div>
           </div>
+        </div>
+        <div class="content" v-else>
+          <h2>Success!</h2>
+          <p>Your strategy was uploaded successful.</p>
         </div>
       </div>
     </div>
@@ -27,8 +31,10 @@
           <p class="paragraph">Please ensure that your code is in an executable format. To test if it can be executed, open up "Terminal" and run:</p>
           <p class="paragraph" style="text-indent: 50px;">sh -c "/path/to/your/strategy"</p>
           <p class="paragraph">If this command succeeds, you can upload your code. Just click the button below and select your file, kick back, and watch yourself lose to always defect.</p>
-          <input type="file" name="strategy" id="strategy" @change="handleUpload" class="strategy-input">
-          <label for="strategy" class="button">Submit</label>
+          <form enctype="multipart/form-data">
+            <input type="file" name="file" id="strategy" @change="handleUpload( $event.target.files )" class="strategy-input">
+            <label for="strategy" class="button">Submit</label>
+          </form>
         </div>
       </div>
       <span class="divider"></span>
@@ -43,6 +49,7 @@
 </template>
 
 <script>
+import * as config from '../config'
 
 export default {
   name: 'Index',
@@ -60,14 +67,33 @@ export default {
     }
   },
   methods: {
-    handleUpload: function () {
+    reset: function () {
+      this.uploading = 'INACTIVE'
+      this.uploadingResponse = ''
+      this.popup = false
+    },
+    handleUpload: function (fileList) {
       console.log('Halp')
       this.uploading = 'UPLOADING'
       this.toggleOverlay()
-      this.uploadFile()
+      this.uploadFile(fileList[0])
     },
-    uploadFile: function () {
-      fetch('api.bastille')
+    uploadFile: function (file) {
+      const formData = new FormData()
+      formData.append('strategy', file, file.name)
+      fetch(config.API_BASE_URL + '/upload', {
+        method: 'POST',
+        body: formData
+      }).then(
+        response => {
+          console.log(response)
+          this.uploadingResponse = response.json()['message']
+        }
+       ).then(
+        this.uploading = 'RESPONSE'
+      ).catch(
+        error => console.log(error)
+      )
     },
     toggleOverlay: function () {
       console.log('Running')

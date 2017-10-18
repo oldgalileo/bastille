@@ -28,7 +28,6 @@ func main() {
 	flag.Parse()
 	log.Info("Bastille is opening the rec. yard...")
 
-	go serv.init()
 	exitChan := make(chan os.Signal, 2)
 	signal.Notify(exitChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -36,6 +35,8 @@ func main() {
 		cleanup()
 		os.Exit(1)
 	}()
+
+	serv.init()
 }
 
 func cleanup() {
