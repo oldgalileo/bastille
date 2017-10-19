@@ -20,8 +20,7 @@ export default {
           this.data.user = this.data.instance.currentUser.get()
           store.commit(LOGIN_SUCCESS)
         } else {
-          this.data.instance.disconnect()
-          this.data.instance.signOut()
+          this.logout()
         }
       }.bind(this))
     }
@@ -29,15 +28,19 @@ export default {
   login: function () {
     return this.data.instance.signIn().then(function () {
       return new Promise(function (resolve, reject) {
-        if (this.data.instance.currentUser.get().getBasicProfile().getEmail().split('@')[1] === 'nuevaschool.org') {
-          this.user = this.data.instance.currentUser.get()
-          resolve()
-        } else {
-          reject('Must be a member of The Nueva School')
-        }
+        // if (this.data.instance.currentUser.get().getBasicProfile().getEmail().split('@')[1] === 'nuevaschool.org') {
+        this.user = this.data.instance.currentUser.get()
+        resolve()
+        // } else {
+        //   reject('Must be a member of The Nueva School')
+        // }
       }.bind(this))
     }.bind(this), function (error) {
       return Promise.reject(error)
     })
+  },
+  logout: function () {
+    this.data.instance.disconnect()
+    this.data.instance.signOut()
   }
 }

@@ -11,7 +11,7 @@
       <div class="button">Upload</div>
       <div class="button">Leaderboard</div>
       <div class="button">About</div>
-      <div class="button">Sign Out</div>
+      <div class="button" @click="$store.dispatch('logout')">Sign Out</div>
     </div>
   </div>
   <div class="navbar" v-else>

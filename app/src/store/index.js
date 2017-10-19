@@ -36,6 +36,10 @@ export default new Vuex.Store({
       }, function (error) {
         commit(LOGIN_FAILED, error)
       })
+    },
+    logout ({ commit }) {
+      auth.logout()
+      commit(LOGOUT)
     }
   }
 })
