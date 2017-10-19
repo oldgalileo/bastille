@@ -3,6 +3,8 @@
 import Vue from 'vue'
 import App from './App'
 import router from './router'
+import store from './store/index'
+import auth from './auth'
 
 Vue.config.productionTip = false
 Vue.config.debug = true
@@ -12,6 +14,10 @@ Vue.config.devtools = true
 new Vue({
   el: '#app',
   router,
+  store,
   template: '<App/>',
-  components: { App }
+  components: { App },
+  created: function () {
+    auth.init()
+  }
 })

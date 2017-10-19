@@ -2,3 +2,4 @@ runner/runner
 bastille
 .idea/
 strategies/
+*.ipd
