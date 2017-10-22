@@ -1,6 +1,6 @@
 import gapi from 'gapi-client'
 import store from './store/index'
-import { LOGIN_SUCCESS } from './store/mutations'
+import { LOGIN_SUCCESS, LOGOUT } from './store/mutations'
 
 export default {
   data: {
@@ -21,6 +21,7 @@ export default {
           store.commit(LOGIN_SUCCESS)
         } else {
           this.logout()
+          store.commit(LOGOUT)
         }
       }.bind(this))
     }
@@ -29,8 +30,8 @@ export default {
     return this.data.instance.signIn().then(function () {
       return new Promise(function (resolve, reject) {
         // if (this.data.instance.currentUser.get().getBasicProfile().getEmail().split('@')[1] === 'nuevaschool.org') {
-        this.user = this.data.instance.currentUser.get()
-        resolve()
+        this.data.user = this.data.instance.currentUser.get()
+        resolve(this.data.user.getAuthResponse().id_token)
         // } else {
         //   reject('Must be a member of The Nueva School')
         // }

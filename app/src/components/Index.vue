@@ -156,7 +156,7 @@ export default {
 
 section {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-flow: row wrap;
   justify-content: center;
@@ -164,7 +164,7 @@ section {
 
 .content {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-flow: column nowrap;
   align-items: center;

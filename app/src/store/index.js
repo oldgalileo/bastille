@@ -9,16 +9,18 @@ export default new Vuex.Store({
   state: {
     authLoggedIn: false,
     authPending: false,
-    authError: ''
+    authError: '',
+    authToken: ''
   },
   mutations: {
     [LOGIN] (state) {
       state.authPending = true
       state.authError = ''
     },
-    [LOGIN_SUCCESS] (state) {
+    [LOGIN_SUCCESS] (state, token) {
       state.authPending = false
       state.authLoggedIn = true
+      state.authToken = token
     },
     [LOGIN_FAILED] (state, error) {
       state.authPending = false
@@ -26,13 +28,14 @@ export default new Vuex.Store({
     },
     [LOGOUT] (state) {
       state.authLoggedIn = false
+      state.authToken = ''
     }
   },
   actions: {
     async login ({ commit }) {
       commit(LOGIN)
-      await auth.login().then(function () {
-        commit(LOGIN_SUCCESS)
+      return auth.login().then(function (token) {
+        commit(LOGIN_SUCCESS, token)
       }, function (error) {
         commit(LOGIN_FAILED, error)
       })

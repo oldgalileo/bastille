@@ -13,8 +13,8 @@ Vue.config.devtools = true
 /* eslint-disable no-new */
 new Vue({
   el: '#app',
-  router,
   store,
+  router,
   template: '<App/>',
   components: { App },
   created: function () {

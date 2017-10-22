@@ -1,5 +1,5 @@
 <template>
-  <div class="navbar" v-if="this.$store.state.authLoggedIn">
+  <div class="navbar" v-if="$store.state.authLoggedIn">
     <div class="content left">
       <div class="logo">Bastille</div>
     </div>
@@ -23,14 +23,26 @@
     <!--</div>-->
     <div class="content right">
       <div class="button">About</div>
-      <div class="button" @click="$store.dispatch('login')">Sign In</div>
+      <div class="button" @click="signIn">Sign In</div>
     </div>
   </div>
 </template>
 
 <script>
+  import store from '../store/index'
+  import router from '../router/index'
+
   export default {
-    name: 'Navigation'
+    name: 'Navigation',
+    methods: {
+      signIn: () => {
+        store.dispatch('login').then(() => {
+          router.push('/dashboard')
+        }, (reject) => {
+          // Add a popup here to notify the user that authentication failed.
+        })
+      }
+    }
   }
 </script>
 
