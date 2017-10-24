@@ -47,7 +47,7 @@ func HandlerUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 	name := strings.Split(header.Filename, ".")
-	srvLog.WithFields(srvLog.Fields{
+	srvLog.WithFields(log.Fields{
 		"filename": header.Filename,
 	}).Info("New strategy uploaded")
 	io.Copy(&localBuff, file)
