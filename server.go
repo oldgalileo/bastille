@@ -13,8 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const STRATEGIES_DIR = "strategies/"
-
 var (
 	srvLog = log.WithFields(log.Fields{
 		"prefix": "api",
@@ -65,4 +63,12 @@ func HandlerUpload(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("{'message': 'Upload successful'}"))
 	r.Body.Close()
+	strategy := &Strategy{
+		ID:      getStrategyID(),
+		Name:    name[0] + ".ipd",
+		Author:  "tbd",
+		Path:    STRATEGIES_DIR + name[0],
+		Matches: []MatchID{},
+	}
+	trn.add(strategy)
 }

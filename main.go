@@ -12,7 +12,8 @@ import (
 
 var (
 	flagServerPort string
-	serv           *Server
+	srv            *Server
+	trn            *TournamentManager
 )
 
 func init() {
@@ -28,6 +29,9 @@ func main() {
 	flag.Parse()
 	log.Info("Bastille is opening the rec. yard...")
 
+	srv = &Server{}
+	trn = &TournamentManager{}
+
 	exitChan := make(chan os.Signal, 2)
 	signal.Notify(exitChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -36,9 +40,11 @@ func main() {
 		os.Exit(1)
 	}()
 
-	serv.init()
+	go trn.init()
+	srv.init()
 }
 
 func cleanup() {
+	trn.cleanup()
 	log.Info("Shutting down... Goodbye!")
 }

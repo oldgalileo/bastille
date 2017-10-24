@@ -6,46 +6,64 @@ import (
 	"net"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"strconv"
 
 	"encoding/hex"
 
+	"io/ioutil"
+
+	"encoding/json"
+
+	"encoding/xml"
+
+	"os"
+
 	log "github.com/sirupsen/logrus"
 )
+
+const STRATEGIES_DIR = "strategies/"
+const EXAMPLES_DIR = "examples/"
+const TOURNAMENT_DIR = "tournament/"
 
 var (
 	dockerImageID string
 	trnLog        = log.WithFields(log.Fields{
 		"prefix": "tournament",
 	})
+	rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
-var exampleStrategies = []Strategy{
-	Strategy{
-		ID:     "1",
-		Name:   "allcoop",
-		Author: "system",
-		Path:   STRATEGIES_DIR + "allcoop.py",
+var exampleStrategies = []*Strategy{
+	&Strategy{
+		ID:      "1",
+		Name:    "allcoop",
+		Author:  "system",
+		Path:    EXAMPLES_DIR + "allcoop.py",
+		Matches: []MatchID{},
 	},
-	Strategy{
-		ID:     "2",
-		Name:   "alldefect",
-		Author: "system",
-		Path:   STRATEGIES_DIR + "alldefect.py",
+	&Strategy{
+		ID:      "2",
+		Name:    "alldefect",
+		Author:  "system",
+		Path:    EXAMPLES_DIR + "alldefect.py",
+		Matches: []MatchID{},
 	},
-	Strategy{
-		ID:     "3",
-		Name:   "invalidcommand",
-		Author: "system",
-		Path:   STRATEGIES_DIR + "invalidcommand.py",
+	&Strategy{
+		ID:      "3",
+		Name:    "invalidcommand",
+		Author:  "system",
+		Path:    EXAMPLES_DIR + "invalidcommand.py",
+		Matches: []MatchID{},
 	},
-	Strategy{
-		ID:     "4",
-		Name:   "titfortat",
-		Author: "system",
-		Path:   STRATEGIES_DIR + "titfortat.py",
+	&Strategy{
+		ID:      "4",
+		Name:    "titfortat",
+		Author:  "system",
+		Path:    EXAMPLES_DIR + "titfortat.py",
+		Matches: []MatchID{},
 	},
 }
 
@@ -69,9 +87,10 @@ func init() {
 }
 
 type TournamentManager struct {
-	Leaderboard map[StrategyID]float32   `xml:"leaderboard"`
-	Strategies  map[StrategyID]*Strategy `xml:"strategies"`
-	Matches     map[MatchID]*Match       `xml:"matches"`
+	sync.RWMutex `json:"-",xml:"-"`
+	Leaderboard  map[StrategyID]float32   `xml:"leaderboard"`
+	Strategies   map[StrategyID]*Strategy `xml:"strategies"`
+	Matches      map[MatchID]*Match       `xml:"matches"`
 }
 
 type MatchID string
@@ -91,14 +110,70 @@ type Match struct {
 type StrategyID string
 
 type Strategy struct {
-	ID      StrategyID `json:"id"`
+	ID      StrategyID `json:"id",xml:"id"`
 	Name    string     `json:"name",xml:"name"`
 	Author  string     `json:"author",xml:"author"`
-	Path    string     `json:"-",xml:"path"`
-	Matches []MatchID  `json:"matches"`
+	Path    string     `json:"path",xml:"path"`
+	Matches []MatchID  `json:"matches",xml:"matches"`
+}
+
+func (tm *TournamentManager) add(strategy *Strategy) {
+	tm.Lock()
+	defer tm.Unlock()
+	tm.Strategies[strategy.ID] = strategy
+}
+
+func (tm *TournamentManager) run() {
+	
+}
+
+func (tm *TournamentManager) init() {
+	tm.Lock()
+	defer tm.Unlock()
+	tm.load()
+}
+
+func (tm *TournamentManager) cleanup() {
+	tm.RLock()
+	defer tm.RUnlock()
+	tm.save()
+}
+
+func (tm *TournamentManager) load() {
+	if _, err := os.Stat(TOURNAMENT_DIR + "core.json"); os.IsNotExist(err) {
+		tm.Leaderboard = make(map[StrategyID]float32)
+		tm.Strategies = make(map[StrategyID]*Strategy)
+		tm.Matches = make(map[MatchID]*Match)
+		for _, strategy := range exampleStrategies {
+			tm.Strategies[strategy.ID] = strategy
+		}
+		return
+	}
+	raw, rawErr := ioutil.ReadFile(TOURNAMENT_DIR + "core.json")
+	if rawErr != nil {
+		trnLog.WithError(rawErr).Panic("Could not read core data")
+	}
+	json.Unmarshal(raw, tm)
+}
+
+func (tm *TournamentManager) save() {
+	raw, rawErr := xml.MarshalIndent(tm, "", "    ")
+	if rawErr != nil {
+		var jsonErr error
+		raw, jsonErr = json.Marshal(tm)
+		if jsonErr != nil {
+			trnLog.WithError(jsonErr).Panic("Could not marshal data in both XML and JSON")
+		}
+		trnLog.WithError(rawErr).Error("Could not marshal data in XML")
+	}
+	writeErr := ioutil.WriteFile(TOURNAMENT_DIR+"core.json", raw, 0644)
+	if writeErr != nil {
+		trnLog.WithError(writeErr).Error("Could not write core data")
+	}
 }
 
 func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) *Match {
+	tm.Lock()
 	match := &Match{
 		ID:            getMatchID(),
 		PlayerA:       aStrat.ID,
@@ -111,6 +186,7 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) *Match {
 		Timestamp:     time.Now().UnixNano(),
 	}
 	tm.Matches[match.ID] = match
+	tm.Unlock()
 	aStrat.Matches = append(aStrat.Matches, match.ID)
 	bStrat.Matches = append(bStrat.Matches, match.ID)
 	localLog := trnLog.WithFields(log.Fields{"match": match.ID})
@@ -251,5 +327,3 @@ func getStrategyID() StrategyID {
 	rand.Read(id)
 	return StrategyID(hex.EncodeToString(id))
 }
-
-var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
