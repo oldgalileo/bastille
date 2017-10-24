@@ -34,7 +34,6 @@ func main() {
 			fmt.Println()
 		}
 	}
-
 }
 
 var imagID string
@@ -49,7 +48,6 @@ func init() {
 }
 
 func makeMeAContainerBaby() (string, int) {
-
 	for i := 0; i < 100; i++ {
 		port := 5000 + rand.New(rand.NewSource(time.Now().UnixNano())).Intn(4000)
 		containerRaw, err := exec.Command("docker", "run", "--rm", "-d", "-p", strconv.Itoa(port)+":10000", imagID).CombinedOutput()
@@ -66,14 +64,7 @@ func makeMeAContainerBaby() (string, int) {
 
 	}
 	panic("shouldn't be able to get to here")
-
 }
-
-//takes in two executable paths
-//starts up two of these dockers, with port 10000 in the VM bound to two random numbers on the host
-//copies in the two executables to /code in both images
-//makes a connection to localhost:whatever, which is docker:10000 on both. this makes relay.go start the provided /code, and forwards stdin/stdout over this socket
-//runs iterated prisoner's dilemma, and finally returns number of rounds and final socre
 
 func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, BavgScore float32, numRounds int, aDisqualified bool, bDisqualified bool) {
 	//fmt.Println("Image id:",imagID)
@@ -151,8 +142,8 @@ func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, Bav
 		Amove := Am[0] == 1
 		Bmove := Bm[0] == 1
 
-		AScore += value(Amove, Bmove)
-		BScore += value(Bmove, Amove)
+		AScore += PayoutMatrix[Amove][Amove]
+		BScore += PayoutMatrix[Bmove][Amove]
 
 		if Amove { // let the other one know what just happened
 			B.Write([]byte{1})
@@ -176,27 +167,13 @@ func playAgainst(pathToExecA string, pathToExecB string) (AavgScore float32, Bav
 	return float32(AScore) / float32(numTurns), float32(BScore) / float32(numTurns), numTurns, false, false
 }
 
-const R = 3
-
-const S = 0
-const T = 5
-
-const P = 1
-
-var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-func value(my bool, their bool) int {
-	if my {
-		if their {
-			return R
-		} else {
-			return S
-		}
-	} else {
-		if their {
-			return T
-		} else {
-			return P
-		}
-	}
+var PayoutMatrix = map[bool]map[bool]int{
+	true: {
+		true:  3,
+		false: 0,
+	},
+	false: {
+		true:  5,
+		false: 1,
+	},
 }

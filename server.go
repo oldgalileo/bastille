@@ -15,6 +15,12 @@ import (
 
 const STRATEGIES_DIR = "strategies/"
 
+var (
+	srvLog = log.WithFields(log.Fields{
+		"prefix": "api",
+	})
+)
+
 type Server struct{}
 
 func (s *Server) init() {
@@ -26,7 +32,7 @@ func (s *Server) init() {
 		AllowCredentials: true,
 	})
 	handler := c.Handler(mux)
-	log.Fatal(http.ListenAndServe(":22101", handler))
+	srvLog.Fatal(http.ListenAndServe(":22101", handler))
 }
 
 func HandlerUpload(w http.ResponseWriter, r *http.Request) {
@@ -36,12 +42,12 @@ func HandlerUpload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		r.Body.Close()
-		log.WithError(err).Error("Could not handle file upload")
+		srvLog.WithError(err).Error("Could not handle file upload")
 		return
 	}
 	defer file.Close()
 	name := strings.Split(header.Filename, ".")
-	log.WithFields(log.Fields{
+	srvLog.WithFields(srvLog.Fields{
 		"filename": header.Filename,
 	}).Info("New strategy uploaded")
 	io.Copy(&localBuff, file)
@@ -50,7 +56,7 @@ func HandlerUpload(w http.ResponseWriter, r *http.Request) {
 	if writeErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		r.Body.Close()
-		log.WithError(err).Error("Issue opening file for writing")
+		srvLog.WithError(err).Error("Issue opening file for writing")
 		return
 	}
 
