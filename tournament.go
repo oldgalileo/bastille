@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"fmt"
 	"strconv"
+
+	"encoding/hex"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -64,17 +65,38 @@ func init() {
 }
 
 type TournamentManager struct {
-	Strategies []Strategy
+	Leaderboard  map[string]float32 `json:"leaderboard"`
+	Strategies   map[string]Strategy
+	Matches      map[string]Match
+	MatchHistory map[string]string
 }
+
+type MatchID string
+
+type Match struct {
+	ID            MatchID  `json:"id"`
+	PlayerA       Strategy `json:"player-a"`
+	PlayerB       Strategy `json:"player-b"`
+	Rounds        int      `json:"rounds"`
+	ScoreA        float32  `json:"score-a"`
+	ScoreB        float32  `json:"score-b"`
+	DisqualifiedA bool     `json:"dq-a"`
+	DisqualifiedB bool     `json:"dq-b"`
+	Timestamp     int64    `json:"timestamp"`
+}
+
+type StrategyID string
 
 type Strategy struct {
-	Name   string
-	Author string
-	Path   string
+	ID     StrategyID
+	Name   string `json:"name",xml:"name"`
+	Author string `json:"author",xml:"author"`
+	Path   string `json:"-",xml:"path"`
 }
 
-func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) (AavgScore float32, BavgScore float32, numRounds int, aDisqualified bool, bDisqualified bool) {
-	localLog := trnLog.WithFields(log.Fields{"pa": aStrat.Name, "pb": bStrat.Name})
+func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) Match {
+	match := Match{ID: getMatchID(), PlayerA: aStrat, PlayerB: bStrat, Rounds: 0, ScoreA: 0, ScoreB: 0, DisqualifiedA: false, DisqualifiedB: false, Timestamp: time.Now().UnixNano()}
+	localLog := trnLog.WithFields(log.Fields{"match": match.ID})
 	localLog.Info("Starting round...")
 	containerA, portA := createContainer()
 	err := exec.Command("docker", "cp", aStrat.Path, containerA+":/code").Run()
@@ -116,7 +138,6 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) (AavgScore flo
 	AScore := 0
 	BScore := 0
 
-	numTurns := 0
 	A.SetDeadline(time.Now().Add(2 * time.Second)) // generous deadline for first move
 	B.SetDeadline(time.Now().Add(2 * time.Second))
 	Am := make([]byte, 1)
@@ -126,23 +147,27 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) (AavgScore flo
 		_, err = io.ReadFull(A, Am)
 		if err != nil {
 			localLog.Warn("Disqualified due to stream closed")
-			return 0, 0, 0, true, false
+			match.DisqualifiedA = true
+			return match
 		}
 
 		_, err = io.ReadFull(B, Bm)
 		if err != nil {
 			localLog.Warn("Disqualified due to stream closed")
-			return 0, 0, 0, false, true
+			match.DisqualifiedB = true
+			return match
 		}
 
 		if Am[0] != 0 && Am[0] != 1 {
 			localLog.Warn("A made invalid move")
-			return 0, 0, 0, true, false
+			match.DisqualifiedA = true
+			return match
 		}
 
 		if Bm[0] != 0 && Bm[0] != 1 {
 			localLog.Warn("B made invalid move")
-			return 0, 0, 0, false, true
+			match.DisqualifiedB = true
+			return match
 		}
 
 		Amove := Am[0] == 1
@@ -162,15 +187,16 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) (AavgScore flo
 			A.Write([]byte{0})
 		}
 
-		numTurns++
-		if rnd.Float32() < 0.0003 && numTurns > 100 {
+		match.Rounds++
+		if rnd.Float32() < 0.0003 && match.Rounds > 100 {
 			break
 		}
 		A.SetDeadline(time.Now().Add(50 * time.Millisecond)) // short deadline for subsequent moves
 		B.SetDeadline(time.Now().Add(50 * time.Millisecond))
 	}
-
-	return float32(AScore) / float32(numTurns), float32(BScore) / float32(numTurns), numTurns, false, false
+	match.ScoreA = float32(AScore) / float32(match.Rounds)
+	match.ScoreB = float32(BScore) / float32(match.Rounds)
+	return match
 }
 
 func createContainer() (string, int) {
@@ -181,7 +207,6 @@ func createContainer() (string, int) {
 			if i < 99 {
 				continue
 			}
-			fmt.Println(string(containerRaw))
 			trnLog.WithField("container", string(containerRaw)).Debug("Created container")
 			panic(err)
 		}
@@ -191,6 +216,18 @@ func createContainer() (string, int) {
 	}
 	trnLog.Panic("Should never reach end of function (createContainer)")
 	return "", 0
+}
+
+func getMatchID() MatchID {
+	id := make([]byte, 8)
+	rand.Read(id)
+	return MatchID(hex.EncodeToString(id))
+}
+
+func getStrategyID() StrategyID {
+	id := make([]byte, 4)
+	rand.Read(id)
+	return StrategyID(hex.EncodeToString(id))
 }
 
 var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
