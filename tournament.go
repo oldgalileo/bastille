@@ -24,21 +24,25 @@ var (
 
 var exampleStrategies = []Strategy{
 	Strategy{
+		ID:     "1",
 		Name:   "allcoop",
 		Author: "system",
 		Path:   STRATEGIES_DIR + "allcoop.py",
 	},
 	Strategy{
+		ID:     "2",
 		Name:   "alldefect",
 		Author: "system",
 		Path:   STRATEGIES_DIR + "alldefect.py",
 	},
 	Strategy{
+		ID:     "3",
 		Name:   "invalidcommand",
 		Author: "system",
 		Path:   STRATEGIES_DIR + "invalidcommand.py",
 	},
 	Strategy{
+		ID:     "4",
 		Name:   "titfortat",
 		Author: "system",
 		Path:   STRATEGIES_DIR + "titfortat.py",
@@ -65,50 +69,69 @@ func init() {
 }
 
 type TournamentManager struct {
-	Leaderboard  map[string]float32 `json:"leaderboard"`
-	Strategies   map[string]Strategy
-	Matches      map[string]Match
-	MatchHistory map[string]string
+	Leaderboard map[StrategyID]float32   `xml:"leaderboard"`
+	Strategies  map[StrategyID]*Strategy `xml:"strategies"`
+	Matches     map[MatchID]*Match       `xml:"matches"`
 }
 
 type MatchID string
 
 type Match struct {
-	ID            MatchID  `json:"id"`
-	PlayerA       Strategy `json:"player-a"`
-	PlayerB       Strategy `json:"player-b"`
-	Rounds        int      `json:"rounds"`
-	ScoreA        float32  `json:"score-a"`
-	ScoreB        float32  `json:"score-b"`
-	DisqualifiedA bool     `json:"dq-a"`
-	DisqualifiedB bool     `json:"dq-b"`
-	Timestamp     int64    `json:"timestamp"`
+	ID            MatchID    `json:"id",xml:"id",csv:"id"`
+	PlayerA       StrategyID `json:"player-a",xml:"player-a",csv:"player-a"`
+	PlayerB       StrategyID `json:"player-b",xml:"player-b",csv:"player-b"`
+	Rounds        int        `json:"rounds",xml:"rounds",csv:"rounds"`
+	ScoreA        float32    `json:"score-a",xml:"score-a",csv:"score-a"`
+	ScoreB        float32    `json:"score-b",xml:"score-b",csv:"score-b"`
+	DisqualifiedA bool       `json:"dq-a",xml:"dq-a",csv:"dq-a"`
+	DisqualifiedB bool       `json:"dq-b",xml:"dq-b",csv:"dq-b"`
+	Timestamp     int64      `json:"timestamp",xml:"timestamp",csv:"timestamp"`
 }
 
 type StrategyID string
 
 type Strategy struct {
-	ID     StrategyID
-	Name   string `json:"name",xml:"name"`
-	Author string `json:"author",xml:"author"`
-	Path   string `json:"-",xml:"path"`
+	ID      StrategyID `json:"id"`
+	Name    string     `json:"name",xml:"name"`
+	Author  string     `json:"author",xml:"author"`
+	Path    string     `json:"-",xml:"path"`
+	Matches []MatchID  `json:"matches"`
 }
 
-func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) Match {
-	match := Match{ID: getMatchID(), PlayerA: aStrat, PlayerB: bStrat, Rounds: 0, ScoreA: 0, ScoreB: 0, DisqualifiedA: false, DisqualifiedB: false, Timestamp: time.Now().UnixNano()}
+func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) *Match {
+	match := &Match{
+		ID:            getMatchID(),
+		PlayerA:       aStrat.ID,
+		PlayerB:       bStrat.ID,
+		Rounds:        0,
+		ScoreA:        0,
+		ScoreB:        0,
+		DisqualifiedA: false,
+		DisqualifiedB: false,
+		Timestamp:     time.Now().UnixNano(),
+	}
+	tm.Matches[match.ID] = match
+	aStrat.Matches = append(aStrat.Matches, match.ID)
+	bStrat.Matches = append(bStrat.Matches, match.ID)
 	localLog := trnLog.WithFields(log.Fields{"match": match.ID})
 	localLog.Info("Starting round...")
+
+	localLog.Debug("Creating PA container...")
 	containerA, portA := createContainer()
 	err := exec.Command("docker", "cp", aStrat.Path, containerA+":/code").Run()
 	if err != nil {
-		panic(err)
+		match.DisqualifiedA = true
+		match.DisqualifiedB = true
+		localLog.WithError(err).Panic("Failed to create PA container")
 	}
 
+	localLog.Debug("Creating PB container...")
 	containerB, portB := createContainer()
-
 	err = exec.Command("docker", "cp", aStrat.Path, containerB+":/code").Run()
 	if err != nil {
-		panic(err)
+		match.DisqualifiedA = true
+		match.DisqualifiedB = true
+		localLog.WithError(err).Panic("Failed to create PB container")
 	}
 
 	time.Sleep(100 * time.Millisecond) // go run relay.go may take time to start
@@ -126,12 +149,12 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) Match {
 
 	A, err := net.Dial("tcp", "localhost:"+strconv.Itoa(portA))
 	if err != nil {
-		panic(err)
+		localLog.WithError(err).Panic("Could not establish connection to PA container")
 	}
 	defer A.Close()
 	B, err := net.Dial("tcp", "localhost:"+strconv.Itoa(portB))
 	if err != nil {
-		panic(err)
+		localLog.WithError(err).Panic("Could not establish connection to PB container")
 	}
 	defer B.Close()
 
@@ -207,8 +230,7 @@ func createContainer() (string, int) {
 			if i < 99 {
 				continue
 			}
-			trnLog.WithField("container", string(containerRaw)).Debug("Created container")
-			panic(err)
+			trnLog.WithField("container", string(containerRaw)).Panic("Issue with container")
 		}
 		container := strings.Trim(string(containerRaw), "\n")
 		return container, port
