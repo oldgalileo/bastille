@@ -6,6 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/x-cray/logrus-prefixed-formatter"
 )
@@ -33,18 +35,22 @@ func main() {
 	trn = &TournamentManager{}
 
 	exitChan := make(chan os.Signal, 2)
+	cancelChan := make(chan bool, 1)
 	signal.Notify(exitChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-exitChan
+		cancelChan <- true
 		cleanup()
 		os.Exit(1)
 	}()
 
-	go trn.init()
+	trn.init()
+	go trn.run(cancelChan)
 	srv.init()
 }
 
 func cleanup() {
+	time.Sleep(1 * time.Second)
 	trn.cleanup()
 	log.Info("Shutting down... Goodbye!")
 }

@@ -21,6 +21,8 @@ import (
 
 	"os"
 
+	"math"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -91,6 +93,7 @@ type TournamentManager struct {
 	Leaderboard  map[StrategyID]float32   `xml:"leaderboard"`
 	Strategies   map[StrategyID]*Strategy `xml:"strategies"`
 	Matches      map[MatchID]*Match       `xml:"matches"`
+	pairings     map[[2]*Strategy]int
 }
 
 type MatchID string
@@ -110,27 +113,77 @@ type Match struct {
 type StrategyID string
 
 type Strategy struct {
-	ID      StrategyID `json:"id",xml:"id"`
-	Name    string     `json:"name",xml:"name"`
-	Author  string     `json:"author",xml:"author"`
-	Path    string     `json:"path",xml:"path"`
-	Matches []MatchID  `json:"matches",xml:"matches"`
+	sync.RWMutex `json:"-",xml:"-"`
+	ID           StrategyID `json:"id",xml:"id"`
+	Name         string     `json:"name",xml:"name"`
+	Author       string     `json:"author",xml:"author"`
+	Path         string     `json:"path",xml:"path"`
+	Matches      []MatchID  `json:"matches",xml:"matches"`
 }
 
 func (tm *TournamentManager) add(strategy *Strategy) {
 	tm.Lock()
 	defer tm.Unlock()
 	tm.Strategies[strategy.ID] = strategy
+	for _, oldStrat := range tm.Strategies {
+		tm.pairings[[2]*Strategy{strategy, oldStrat}] = 0
+		tm.pairings[[2]*Strategy{oldStrat, strategy}] = 0
+	}
 }
 
-func (tm *TournamentManager) run() {
-	
+func (tm *TournamentManager) run(exit chan bool) {
+	trnLog.Info("Starting tournament...")
+exitGOTO:
+	for {
+		select {
+		case <-exit:
+			break exitGOTO
+		default:
+			break
+		}
+		lowestKey := [2]*Strategy{exampleStrategies[0], exampleStrategies[1]}
+		lowestVal := math.MaxInt32
+		firstVal := math.MaxInt32
+		tm.RLock()
+		for pairing, played := range tm.pairings {
+			if lowestVal == math.MaxInt32 {
+				firstVal = played
+			}
+			if lowestVal >= played {
+				lowestKey = pairing
+				lowestVal = played
+			}
+		}
+		if firstVal == lowestVal {
+
+		}
+		tm.RUnlock()
+		if lowestVal > 100 {
+			break
+		}
+		match := tm.playAgainst(lowestKey[0], lowestKey[1])
+		// heck yeah
+		tm.Lock()
+		tm.Leaderboard[match.PlayerA] = float32((tm.Leaderboard[match.PlayerA]*float32(len(lowestKey[0].Matches)-1) + float32(match.ScoreA)) / float32(len(lowestKey[0].Matches)))
+		tm.Leaderboard[match.PlayerB] = float32((tm.Leaderboard[match.PlayerB]*float32(len(lowestKey[1].Matches)-1) + float32(match.ScoreB)) / float32(len(lowestKey[1].Matches)))
+		tm.pairings[lowestKey] += 1
+		tm.Unlock()
+	}
+	trnLog.Info("Ending tournament...")
 }
 
 func (tm *TournamentManager) init() {
 	tm.Lock()
 	defer tm.Unlock()
 	tm.load()
+	for _, aStrat := range tm.Strategies {
+		for _, bStrat := range tm.Strategies {
+			if aStrat.ID == bStrat.ID {
+				continue
+			}
+			tm.pairings[[2]*Strategy{aStrat, bStrat}] = 0
+		}
+	}
 }
 
 func (tm *TournamentManager) cleanup() {
@@ -140,7 +193,11 @@ func (tm *TournamentManager) cleanup() {
 }
 
 func (tm *TournamentManager) load() {
+	trnLog.Info("Loading core data...")
+	defer trnLog.Info("Successfully loaded!")
+	tm.pairings = make(map[[2]*Strategy]int)
 	if _, err := os.Stat(TOURNAMENT_DIR + "core.json"); os.IsNotExist(err) {
+		trnLog.Info("Could not find core data. Initializing...")
 		tm.Leaderboard = make(map[StrategyID]float32)
 		tm.Strategies = make(map[StrategyID]*Strategy)
 		tm.Matches = make(map[MatchID]*Match)
@@ -157,6 +214,7 @@ func (tm *TournamentManager) load() {
 }
 
 func (tm *TournamentManager) save() {
+	trnLog.Info("Saving core data...")
 	raw, rawErr := xml.MarshalIndent(tm, "", "    ")
 	if rawErr != nil {
 		var jsonErr error
@@ -172,7 +230,7 @@ func (tm *TournamentManager) save() {
 	}
 }
 
-func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) *Match {
+func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 	tm.Lock()
 	match := &Match{
 		ID:            getMatchID(),
@@ -187,8 +245,12 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) *Match {
 	}
 	tm.Matches[match.ID] = match
 	tm.Unlock()
+	aStrat.Lock()
+	bStrat.Lock()
 	aStrat.Matches = append(aStrat.Matches, match.ID)
 	bStrat.Matches = append(bStrat.Matches, match.ID)
+	aStrat.Unlock()
+	bStrat.Unlock()
 	localLog := trnLog.WithFields(log.Fields{"match": match.ID})
 	localLog.Info("Starting round...")
 
@@ -210,7 +272,7 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) *Match {
 		localLog.WithError(err).Panic("Failed to create PB container")
 	}
 
-	time.Sleep(100 * time.Millisecond) // go run relay.go may take time to start
+	//time.Sleep(50 * time.Millisecond) // go run relay.go may take time to start
 
 	// cd dock && docker build .
 	//dockerImage := "9e983c4697fc"
@@ -242,29 +304,28 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) *Match {
 	Am := make([]byte, 1)
 	Bm := make([]byte, 1)
 	for {
-
 		_, err = io.ReadFull(A, Am)
 		if err != nil {
-			localLog.Warn("Disqualified due to stream closed")
+			localLog.WithFields(log.Fields{"a-name": aStrat.Name, "a-id": match.PlayerA}).Warn("A Disqualified due to stream closed")
 			match.DisqualifiedA = true
 			return match
 		}
 
 		_, err = io.ReadFull(B, Bm)
 		if err != nil {
-			localLog.Warn("Disqualified due to stream closed")
+			localLog.WithFields(log.Fields{"b-name": bStrat.Name, "b-id": match.PlayerB}).Warn("B Disqualified due to stream closed")
 			match.DisqualifiedB = true
 			return match
 		}
 
 		if Am[0] != 0 && Am[0] != 1 {
-			localLog.Warn("A made invalid move")
+			localLog.WithFields(log.Fields{"a-name": aStrat.Name, "a-id": match.PlayerA}).Warn("A made invalid move")
 			match.DisqualifiedA = true
 			return match
 		}
 
 		if Bm[0] != 0 && Bm[0] != 1 {
-			localLog.Warn("B made invalid move")
+			localLog.WithFields(log.Fields{"b-name": bStrat.Name, "b-id": match.PlayerB}).Warn("B made invalid move")
 			match.DisqualifiedB = true
 			return match
 		}
@@ -295,6 +356,23 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat Strategy) *Match {
 	}
 	match.ScoreA = float32(AScore) / float32(match.Rounds)
 	match.ScoreB = float32(BScore) / float32(match.Rounds)
+	localLog.WithFields(log.Fields{
+		"rounds":    match.Rounds,
+		"timestamp": match.Timestamp,
+	}).Debug("Round information")
+	localLog.WithFields(log.Fields{
+		"id":    match.PlayerA,
+		"name":  aStrat.Name,
+		"score": match.ScoreA,
+		"dq":    match.DisqualifiedA,
+	}).Debug("Player A information")
+	localLog.WithFields(log.Fields{
+		"id":    match.PlayerB,
+		"name":  bStrat.Name,
+		"score": match.ScoreB,
+		"dq":    match.DisqualifiedB,
+	}).Debug("Player B information")
+	localLog.Info("Finished round...")
 	return match
 }
 
