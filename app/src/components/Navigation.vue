@@ -11,7 +11,7 @@
       <div class="button">Upload</div>
       <div class="button">Leaderboard</div>
       <div class="button">About</div>
-      <div class="button" @click="$store.dispatch('logout')">Sign Out</div>
+      <div class="button" @click="signOut">Sign Out</div>
     </div>
   </div>
   <div class="navbar" v-else>
@@ -40,6 +40,11 @@
           router.push('/dashboard')
         }, (reject) => {
           // Add a popup here to notify the user that authentication failed.
+        })
+      },
+      signOut: () => {
+        store.dispatch('logout').then(() => {
+          router.push('/')
         })
       }
     }

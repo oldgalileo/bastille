@@ -5,10 +5,13 @@ import App from './App'
 import router from './router'
 import store from './store/index'
 import auth from './auth'
+import { sync } from 'vuex-router-sync'
 
 Vue.config.productionTip = false
 Vue.config.debug = true
 Vue.config.devtools = true
+
+sync(store, router)
 
 /* eslint-disable no-new */
 new Vue({

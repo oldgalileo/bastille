@@ -45,6 +45,21 @@ const router = new Router({
 })
 
 router.beforeEach((to, from, next) => {
+  if (store.state.loading) {
+    store.watch(
+      (state) => state.loading,
+      (value) => {
+        if (value === false) {
+          next()
+        }
+      }
+    )
+  } else {
+    next()
+  }
+})
+
+router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!store.state.authLoggedIn) {
       next('/')
