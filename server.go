@@ -25,7 +25,7 @@ type Server struct{}
 
 func (s *Server) init() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/upload", HandlerUpload)
+	mux.HandleFunc("/upload", HandleUpload)
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:8080", "https://thebastille.co"},
@@ -35,7 +35,9 @@ func (s *Server) init() {
 	srvLog.Fatal(http.ListenAndServe(":22101", handler))
 }
 
-func HandlerUpload(w http.ResponseWriter, r *http.Request) {
+func HandleUpload(w http.ResponseWriter, r *http.Request) {
+	// Limit filesize to 2MB
+	r.Body = http.MaxBytesReader(w, r.Body, 2097152)
 	var localBuff bytes.Buffer
 
 	author := r.FormValue("author")

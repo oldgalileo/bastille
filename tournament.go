@@ -97,9 +97,9 @@ func init() {
 
 type TournamentManager struct {
 	sync.RWMutex `json:"-",xml:"-"`
-	Leaderboard  map[StrategyID]float32   `xml:"leaderboard"`
-	Strategies   map[StrategyID]*Strategy `xml:"strategies"`
-	Matches      map[MatchID]*Match       `xml:"matches"`
+	Leaderboard  map[StrategyID]float32   `json:"leaderboard",xml:"leaderboard"`
+	Strategies   map[StrategyID]*Strategy `json:"strategies",xml:"strategies"`
+	Matches      map[MatchID]*Match       `json:"matches",xml:"matches"`
 	pairings     map[[2]*Strategy]int
 }
 
@@ -126,6 +126,7 @@ type Strategy struct {
 	Author       string     `json:"author",xml:"author"`
 	Description  string     `json:"desc",xml:"desc"`
 	Path         string     `json:"path",xml:"path"`
+	Disqualified bool       `json:"disqualified",xml:"disqualified"`
 	Matches      []MatchID  `json:"matches",xml:"matches"`
 }
 
@@ -162,14 +163,21 @@ exitGOTO:
 				lowestVal = played
 			}
 		}
-		if firstVal == lowestVal {
-
+		if firstVal == lowestVal && lowestVal == 100 {
+			trnLog.Info("No new strategies... Skipping")
+			time.Sleep(3 * time.Second)
+			continue
 		}
 		tm.RUnlock()
-		if lowestVal > 100 {
-			break
-		}
 		match := tm.playAgainst(lowestKey[0], lowestKey[1])
+		if match.DisqualifiedA && tm.validateStrategy(match.PlayerA) {
+			tm.disqualifyStrategy(match.PlayerB)
+			continue
+		}
+		if match.DisqualifiedB && tm.validateStrategy(match.PlayerB) {
+			tm.disqualifyStrategy(match.PlayerB)
+			continue
+		}
 		// heck yeah
 		tm.Lock()
 		tm.Leaderboard[match.PlayerA] = float32((tm.Leaderboard[match.PlayerA]*float32(len(lowestKey[0].Matches)-1) + float32(match.ScoreA)) / float32(len(lowestKey[0].Matches)))
@@ -235,6 +243,46 @@ func (tm *TournamentManager) save() {
 	writeErr := ioutil.WriteFile(TOURNAMENT_DIR+"core.json", raw, 0644)
 	if writeErr != nil {
 		trnLog.WithError(writeErr).Error("Could not write core data")
+	}
+}
+
+func (tm *TournamentManager) validateStrategy(id StrategyID) bool {
+	strategy := tm.Strategies[id]
+	if len(strategy.Matches) < 5 {
+		return true
+	}
+	disqualifyCount := 0
+	for ; disqualifyCount < 5; disqualifyCount++ {
+		tempMatchID := strategy.Matches[len(strategy.Matches)-1-disqualifyCount]
+		if !tm.Matches[tempMatchID].DisqualifiedA {
+			break
+		}
+	}
+	return !(disqualifyCount == 5)
+}
+
+func (tm *TournamentManager) disqualifyStrategy(id StrategyID) {
+	strategy := tm.Strategies[id]
+	for _, matchID := range strategy.Matches {
+		match := tm.Matches[matchID]
+		var enemyID StrategyID
+		var enemyScore float32
+		if match.PlayerA != id {
+			enemyID = match.PlayerA
+			enemyScore = match.ScoreA
+		} else {
+			enemyID = match.PlayerB
+			enemyScore = match.ScoreB
+		}
+		enemy := tm.Strategies[enemyID]
+		tm.Lock()
+		tm.Leaderboard[enemyID] = ((tm.Leaderboard[enemyID] * float32(len(enemy.Matches))) - enemyScore) / float32(len(enemy.Matches)-1)
+		pairing := [2]*Strategy{tm.Strategies[match.PlayerA], tm.Strategies[match.PlayerB]}
+		tm.pairings[pairing] -= 1
+		if tm.pairings[pairing] == 0 {
+			delete(tm.pairings, pairing)
+		}
+		tm.Unlock()
 	}
 }
 
