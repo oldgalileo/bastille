@@ -224,6 +224,8 @@
     min-height: 100px;
     text-align: left;
     font-weight: 400;
+    word-wrap: break-word;
+    overflow: auto;
   }
 
   .input-line .textarea:focus {
