@@ -170,11 +170,11 @@ exitGOTO:
 		}
 		tm.RUnlock()
 		match := tm.playAgainst(lowestKey[0], lowestKey[1])
-		if match.DisqualifiedA && tm.validateStrategy(match.PlayerA) {
-			tm.disqualifyStrategy(match.PlayerB)
+		if match.DisqualifiedA && !tm.validateStrategy(match.PlayerA) {
+			tm.disqualifyStrategy(match.PlayerA)
 			continue
 		}
-		if match.DisqualifiedB && tm.validateStrategy(match.PlayerB) {
+		if match.DisqualifiedB && !tm.validateStrategy(match.PlayerB) {
 			tm.disqualifyStrategy(match.PlayerB)
 			continue
 		}
@@ -193,7 +193,13 @@ func (tm *TournamentManager) init() {
 	defer tm.Unlock()
 	tm.load()
 	for _, aStrat := range tm.Strategies {
+		if aStrat.Disqualified {
+			continue
+		}
 		for _, bStrat := range tm.Strategies {
+			if bStrat.Disqualified {
+				continue
+			}
 			if aStrat.ID == bStrat.ID {
 				continue
 			}
@@ -248,13 +254,32 @@ func (tm *TournamentManager) save() {
 
 func (tm *TournamentManager) validateStrategy(id StrategyID) bool {
 	strategy := tm.Strategies[id]
+	trnLog.WithFields(log.Fields{
+		"name":    strategy.Name,
+		"matches": len(strategy.Matches),
+		"id":      id,
+	}).Debug("Validating")
 	if len(strategy.Matches) < 5 {
 		return true
 	}
 	disqualifyCount := 0
 	for ; disqualifyCount < 5; disqualifyCount++ {
 		tempMatchID := strategy.Matches[len(strategy.Matches)-1-disqualifyCount]
-		if !tm.Matches[tempMatchID].DisqualifiedA {
+		tempMatch := tm.Matches[tempMatchID]
+		trnLog.WithFields(log.Fields{
+			"rounds":    tempMatch.Rounds,
+			"timestamp": tempMatch.Timestamp,
+			"dq-a":      tempMatch.DisqualifiedA,
+			"dq-b":      tempMatch.DisqualifiedB,
+			"id-a":      tempMatch.PlayerA,
+			"id-b":      tempMatch.PlayerB,
+			"player":    tempMatch.PlayerA == id,
+			"count":     disqualifyCount,
+		}).Debug("Checking match #" + tempMatchID)
+		if tempMatch.PlayerA == id && !tempMatch.DisqualifiedA {
+			break
+		}
+		if tempMatch.PlayerB == id && !tempMatch.DisqualifiedB {
 			break
 		}
 	}
@@ -262,8 +287,10 @@ func (tm *TournamentManager) validateStrategy(id StrategyID) bool {
 }
 
 func (tm *TournamentManager) disqualifyStrategy(id StrategyID) {
+	trnLog.Warn("Disqualifying Strategy #" + id)
 	strategy := tm.Strategies[id]
 	for _, matchID := range strategy.Matches {
+		trnLog.Warn("Undoing match #" + matchID)
 		match := tm.Matches[matchID]
 		var enemyID StrategyID
 		var enemyScore float32
@@ -277,13 +304,15 @@ func (tm *TournamentManager) disqualifyStrategy(id StrategyID) {
 		enemy := tm.Strategies[enemyID]
 		tm.Lock()
 		tm.Leaderboard[enemyID] = ((tm.Leaderboard[enemyID] * float32(len(enemy.Matches))) - enemyScore) / float32(len(enemy.Matches)-1)
-		pairing := [2]*Strategy{tm.Strategies[match.PlayerA], tm.Strategies[match.PlayerB]}
-		tm.pairings[pairing] -= 1
-		if tm.pairings[pairing] == 0 {
-			delete(tm.pairings, pairing)
-		}
 		tm.Unlock()
 	}
+	for key := range tm.pairings {
+		if key[0] == strategy || key[1] == strategy {
+			delete(tm.pairings, key)
+		}
+	}
+	strategy.Disqualified = true
+	trnLog.Warn("Successfully disqualified Strategy #" + id)
 }
 
 func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
@@ -316,7 +345,8 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 	if err != nil {
 		match.DisqualifiedA = true
 		match.DisqualifiedB = true
-		localLog.WithError(err).Panic("Failed to create PA container")
+		localLog.WithError(err).Error("Failed to create PA container")
+		return match
 	}
 
 	localLog.Debug("Creating PB container...")
@@ -325,7 +355,8 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 	if err != nil {
 		match.DisqualifiedA = true
 		match.DisqualifiedB = true
-		localLog.WithError(err).Panic("Failed to create PB container")
+		localLog.WithError(err).Error("Failed to create PB container")
+		return match
 	}
 
 	//time.Sleep(50 * time.Millisecond) // go run relay.go may take time to start
@@ -377,12 +408,36 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 		if Am[0] != 0 && Am[0] != 1 {
 			localLog.WithFields(log.Fields{"a-name": aStrat.Name, "a-id": match.PlayerA}).Warn("A made invalid move")
 			match.DisqualifiedA = true
+			localLog.WithFields(log.Fields{
+				"id":    match.PlayerA,
+				"name":  aStrat.Name,
+				"score": match.ScoreA,
+				"dq":    match.DisqualifiedA,
+			}).Debug("Player A information")
+			localLog.WithFields(log.Fields{
+				"id":    match.PlayerB,
+				"name":  bStrat.Name,
+				"score": match.ScoreB,
+				"dq":    match.DisqualifiedB,
+			}).Debug("Player B information")
 			return match
 		}
 
 		if Bm[0] != 0 && Bm[0] != 1 {
 			localLog.WithFields(log.Fields{"b-name": bStrat.Name, "b-id": match.PlayerB}).Warn("B made invalid move")
 			match.DisqualifiedB = true
+			localLog.WithFields(log.Fields{
+				"id":    match.PlayerA,
+				"name":  aStrat.Name,
+				"score": match.ScoreA,
+				"dq":    match.DisqualifiedA,
+			}).Debug("Player A information")
+			localLog.WithFields(log.Fields{
+				"id":    match.PlayerB,
+				"name":  bStrat.Name,
+				"score": match.ScoreB,
+				"dq":    match.DisqualifiedB,
+			}).Debug("Player B information")
 			return match
 		}
 
