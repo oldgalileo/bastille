@@ -48,14 +48,14 @@ betray = b"\x00"
 
 def run():
     currentRound = 0
-    opponentLastMove = null
+    opponentLastMove = None
 
     # We don't know how many rounds our match will go on for and the 
     # supervisor will inform us when the game is match is finished,
     # so we use a `while True:`
     while True:
         # If no moves have been made, we want to start by cooperating.
-        if currentRound = 0:
+        if currentRound == 0:
             sys.stdout.buffer.write(coop)
         else:
             # Now we play back whatever our opponent did last move.
@@ -68,7 +68,7 @@ def run():
         opponentLastMove = sys.stdin.buffer.read(1)
         
         # Is the opponents last move a null-byte?
-        if opponentLastMove = b"":
+        if opponentLastMove == b"":
             # Yes, that means the match is over.
             return
 
