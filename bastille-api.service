@@ -1,0 +1,13 @@
+[Unit]
+Description=Bastille API Server
+After=network.target
+
+[Service]
+Type=simple
+User=howard
+WorkingDirectory=/var/www/thebastille.co/
+ExecStart=/var/www/thebastille.co/bastille
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
