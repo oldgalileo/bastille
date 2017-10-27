@@ -35,6 +35,7 @@
   justify-content: flex-start;
   width: 100vw;
   height: 100vh;
+  font-weight: 500;
   align-items: center;
   flex-flow: column nowrap;
 }
@@ -69,4 +70,3 @@ section {
   justify-content: center;
 }
 </style>
-
