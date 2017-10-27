@@ -95,7 +95,6 @@
     justify-content: center;
     align-items: center;
     user-select: none;
-    min-width: 80px;
     transition: all 0.2s ease;
     text-decoration: none;
     color: #2c3e50;
