@@ -126,8 +126,8 @@
 
 <style scoped>
   .form {
-    min-width: 600px;
-    width: 40%;
+    max-width: 700px;
+    width: 80%;
   }
 
   .inputs {
@@ -140,11 +140,9 @@
   .input-line {
     width: 100%;
     display: flex;
-    flex-flow: row nowrap;
-    justify-content: space-between;
-    align-items: center;
-    min-height: 75px;
-    border-bottom: thin solid #2c3e50;
+    flex-flow: column nowrap;
+    justify-content: flex-start;
+    align-items: flex-start;
   }
 
   .header-line {
@@ -153,28 +151,31 @@
 
   .header-line .header {
     font-size: 2.0rem;
-    font-weight: 500;
-    padding-bottom: 50px;
+    font-weight: bold;
+    padding-bottom: 15px;
   }
 
   .input-line label:not(.header) {
-    font-size: 1.5rem;
-    padding: 0 15px;
-    border-right: 1px solid #2c3e50;
+    font-size: 0.75rem;
     line-height: 1.5rem;
     text-align: left;
-    width: 25%;
   }
 
   .input-line input[type=text] {
     font-family: 'Avenir', Helvetica, Arial, sans-serif;
-    height: 40px;
-    border: none;
+    border: 2px solid #2c3e50;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     -webkit-appearance: none;
     -moz-appearance: none;
     width: 100%;
-    margin-left: 15px;
-    font-size: 1.5rem;
+    padding: 15px;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    border-radius: 3px;
+    font-size: 1rem;
+    margin-bottom: 10px;
   }
 
   .input-line input[type=text]:focus {
@@ -192,13 +193,15 @@
     border: none;
     resize: none;
     width: 100%;
-    margin: 15px 0px 15px 15px;
+    padding: 15px;
+    border: 2px solid #2c3e50;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    border-radius: 3px;
     font-size: 1.0rem;
-    line-height: 1.15rem;
-    min-height: 100px;
     text-align: left;
     font-weight: 400;
-    word-wrap: break-word;
+    margin-bottom: 10px;
     overflow: auto;
   }
 
@@ -228,14 +231,17 @@
   }
 
   .input-line .file-label {
-    height: 40px;
     width: 100%!important;
     border: none!important;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
-    margin-left: 15px;
-    padding: 0 !important;
-    /*border-bottom: 1px solid #2c3e50!important;*/
+    font-size: 1rem!important;
+    padding: 15px;
+    padding-left: 0;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    font-weight: bold;
     cursor: pointer;
   }
 
