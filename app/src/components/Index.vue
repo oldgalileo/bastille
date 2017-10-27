@@ -2,21 +2,21 @@
   <div class="main">
     <div class="overlay" v-if="popup===true" @click="toggleOverlay">
       <div class="dialog">
-        <div class="content" v-if="uploading==='RESPONSE'">
+        <div class="nav-content" v-if="uploading==='RESPONSE'">
           <div class="loader">
             <div class="inside">Uploading</div>
             <div class="circle"></div>
           </div>
         </div>
-        <div class="content" v-else>
+        <div class="nav-content" v-else>
           <h2>Success!</h2>
           <p>Your strategy was uploaded successfully.</p>
         </div>
       </div>
     </div>
     <section>
-      <div class="content">
-        <div class="content">
+      <div class="nav-content">
+        <div class="nav-content">
           <h1 class="big-header">Bastille</h1>
           <p>A new approach to programmatic IPD (Iterative Prisoner's Dilemma)</p>
         </div>
@@ -132,7 +132,7 @@ section {
   justify-content: center;
 }
 
-.content {
+.nav-content {
   width: 100%;
   min-height: 100%;
   display: flex;
@@ -141,7 +141,7 @@ section {
   justify-content: center;
 }
 
-.content > .paragraph {
+.nav-content > .paragraph {
   width: 75%;
   text-align: justify;
   margin-top: 0;

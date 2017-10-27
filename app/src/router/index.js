@@ -3,6 +3,7 @@ import Router from 'vue-router'
 import Index from '@/components/Index'
 import StrategySubmission from '@/components/StrategySubmission'
 import Dashboard from '@/components/Dashboard'
+import About from '@/components/About'
 import store from '@/store/index'
 
 Vue.use(Router)
@@ -28,6 +29,11 @@ const router = new Router({
       //       ? createElement(Dashboard, context.data, context.children) : createElement(Index, context.data, context.children)
       //   }
       // })
+    },
+    {
+      path: '/about',
+      name: 'About',
+      component: About
     },
     {
       path: '/dashboard',

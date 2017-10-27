@@ -1,9 +1,9 @@
 <template>
   <div class="navbar">
-    <div class="content left">
+    <div class="nav-content left">
       <div class="logo">Bastille</div>
     </div>
-    <div class="content right">
+    <div class="nav-content right">
       <div class="text">Welcome!</div>
       <template v-if="$store.state.authLoggedIn">
         <div class="button">Upload</div>
@@ -58,7 +58,7 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
   }
 
-  .content {
+  .nav-content {
     display: flex;
     flex-flow: row nowrap;
     align-items: center;
