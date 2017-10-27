@@ -52,74 +52,70 @@
 </script>
 
 <style scoped="true">
-  .navbar > * > .logo {
-    font-weight: normal;
-    font-size: 2rem;
-    padding-right: 20px;
-  }
-
   .navbar {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 5%;
-    min-height: 30px;
-    background: white;
+    width: 100%;
+    height: 50px;
+    background-color: white;
     padding: 5px 5px;
     display: flex;
     flex-flow: row wrap;
     justify-content: space-between;
     align-items: center;
-    z-index: 100;
-    box-shadow: 0px 1px 0px 0px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
   }
 
-  .navbar > .content {
+  .content {
     display: flex;
     flex-flow: row nowrap;
     align-items: center;
     height: 100%;
   }
 
-  .navbar > .left > * {
-    margin: 0 0 0 20px;
+  .logo {
+    margin-left: 20px;
+    font-weight: bold;
+    font-size: 2rem;
+    padding-right: 20px;
   }
 
-  .navbar > .left > .divider {
-    margin: 6px 0;
+  .button, .text {
+    margin-right: 20px;
   }
 
-  .navbar > .right > * {
-    margin: 0 20px 0 0;
-  }
-
-  .navbar > .right {
+  .right {
     padding-right: 5px;
   }
 
-
-  .navbar > .content > .text, .button {
-    height: 80%;
+  .button {
+    height: 67%;
     display: flex;
     justify-content: center;
     align-items: center;
     user-select: none;
     min-width: 80px;
     transition: all 0.2s ease;
-    font-weight: bold;
     text-decoration: none;
     color: #2c3e50;
-  }
-
-  .navbar > .content > .button {
     font-weight: bold;
     cursor: pointer;
-    cursor: hand;
-    border-bottom: 1px solid black;
+    position: relative;
+  }
+  .button::after {
+    height: 2px;
+    width: 100%;
+    position: absolute;
+    display: block;
+    content: ' ';
+    bottom: 0;
+    left: 0;
+    background-color: #2c3e50;
+    transition: transform 0.3s cubic-bezier(1, 0, 0, 1);;
+  }
+  .button:hover::after {
+    transform: scaleY(1.5);
   }
 
-  .navbar > .content > .button:hover {
-    border-bottom: 2px solid black;
-  }
 </style>
