@@ -1,6 +1,7 @@
-runner/runner
 bastille
+thebastille.co
 .idea/
 strategies/
-*.ipd
 tournament/
+*.ipd
+*.service
