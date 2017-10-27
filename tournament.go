@@ -351,7 +351,7 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 
 	localLog.Debug("Creating PB container...")
 	containerB, portB := createContainer()
-	err = exec.Command("docker", "cp", aStrat.Path, containerB+":/code").Run()
+	err = exec.Command("docker", "cp", bStrat.Path, containerB+":/code").Run()
 	if err != nil {
 		match.DisqualifiedA = true
 		match.DisqualifiedB = true
