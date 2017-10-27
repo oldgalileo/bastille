@@ -35,7 +35,54 @@ Otherwise, to install python3 run: (this will take a bit)
 brew install python3
 ```
 
+### Writing the Stategy
+```python
+#!/usr/bin/python3
+# Sys allows us to read stdin/stdout
+import sys
 
+# These variables are byte literals. We will alias the values for
+# cooperate and betray so our code is more readable.
+coop = b"\x01"
+betray = b"\x00"
 
-### Scoring
+def run():
+    currentRound = 0
+    opponentLastMove = null
+
+    # We don't know how many rounds our match will go on for and the 
+    # supervisor will inform us when the game is match is finished,
+    # so we use a `while True:`
+    while True:
+        # If no moves have been made, we want to start by cooperating.
+        if currentRound = 0:
+            sys.stdout.buffer.write(coop)
+        else:
+            # Now we play back whatever our opponent did last move.
+            sys.stdout.buffer.write(opponentLastMove)
+            
+        # You must call this after writing your move to "send" it.
+        sys.stdout.flush()
+        
+        # We read in the opponent's move.
+        opponentLastMove = sys.stdin.buffer.read(1)
+        
+        # Is the opponents last move a null-byte?
+        if opponentLastMove = b"":
+            # Yes, that means the match is over.
+            return
+
+# We do actually have to run the strategy.
+run()
+```
+
+### Running the Strategy
+To test that the strategy works, you can run it with:
+```
+python3 <yourstrategyhere>.py
+```
+
+If there are no errors, it might work. Go ahead and upload it!
+
+## Scoring
 The score is on a scale from 0–5, and is calculated by taking the average of the average score per match. This is one step away from Axelrod's method of scoring, where your score is the percentage of the way to a perfect 5.0 average score. We chose to go our route as it gives a tiny bit of insight into the moves of the strategy (and the numbers are bigger, of course).
