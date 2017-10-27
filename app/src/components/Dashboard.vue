@@ -1,8 +1,28 @@
 <template>
 <div class="main">
+  <div class="overlay" v-if="!isInitial">
+    <div class="dialog">
+      <div class="content" v-if="isUploading">
+        <div class="loader">
+          <div class="inside">Uploading</div>
+          <div class="circle"></div>
+        </div>
+      </div>
+      <div class="content" v-else-if="isSuccess">
+        <h2>Success!</h2>
+        <p>Your strategy was uploaded successful.</p>
+        <button @click="reset()">Close</button>
+      </div>
+      <div class="content" v-else-if="isFailed">
+        <h2>Uh-oh!</h2>
+        <p>Could not upload strategy...</p>
+        <button @click="reset()">Close</button>
+      </div>
+    </div>
+  </div>
   <section>
     <div class="content">
-      <form method="POST" class="form" name="strategy" enctype="multipart/form-data">
+      <form method="POST" class="form" name="strategy" enctype="multipart/form-data" @submit.prevent="uploadStrategy()">
         <ul class="inputs">
           <li class="input-line header-line"><label class="header">Submit Strategy</label></li>
           <li class="input-line">
@@ -16,8 +36,13 @@
           </li>
           <li class="input-line">
             <label for="exec-button">File</label>
-            <input type="file" class="file-input" id="exec" name="exec" hidden="true">
-            <label for="exec" id="exec-button" class="file-label">Select File...</label>
+            <input type="file" class="file-input" id="exec" name="exec" hidden="true" @change="handleFile( $event.target.files )">
+            <template v-if="strategyFileName === ''">
+              <label for="exec" id="exec-button" class="file-label">Select File...</label>
+            </template>
+            <template v-else>
+              <label for="exec" id="exec-button" class="file-label">{{ strategyFileName }}</label>
+            </template>
           </li>
           <li class="input-line">
             <button type="submit">Submit</button>
@@ -30,8 +55,72 @@
 </template>
 
 <script>
+  import * as config from '@/config'
+  import auth from '@/auth'
+
+  const STATUS_INITIAL = 0
+  const STATUS_UPLOADING = 1
+  const STATUS_SUCCESS = 2
+  const STATUS_FAILED = 3
+
   export default {
-    name: 'Dashboard'
+    name: 'Dashboard',
+    data () {
+      return {
+        status: STATUS_INITIAL,
+        strategyFile: null,
+        strategyFileName: '',
+        uploadResponse: ''
+      }
+    },
+    computed: {
+      isInitial () {
+        return this.status === STATUS_INITIAL
+      },
+      isUploading () {
+        return this.status === STATUS_UPLOADING
+      },
+      isSuccess () {
+        return this.status === STATUS_SUCCESS
+      },
+      isFailed () {
+        return this.status === STATUS_FAILED
+      }
+    },
+    methods: {
+      reset () {
+        this.status = STATUS_INITIAL
+        this.strategyFile = null
+        this.strategyFiileName = ''
+        this.uploadResponse = ''
+      },
+      handleFile (files) {
+        this.strategyFileName = files[0].name
+        this.strategyFile = files[0]
+      },
+      uploadStrategy () {
+        this.status = STATUS_UPLOADING
+        var formElement = document.querySelector('form')
+        var formData = new FormData(formElement)
+        var descElement = document.querySelector('#description')
+        formData.set('desc', descElement.innerHTML)
+        formData.set('author', auth.data.user.getBasicProfile().getName())
+        fetch(config.API_BASE_URL + '/upload', {
+          method: 'POST',
+          body: formData
+        }).then((response) => {
+          this.uploadResponse = response.json()['message']
+          if (response.ok) {
+            this.status = STATUS_SUCCESS
+          } else {
+            this.status = STATUS_FAILED
+          }
+        }).catch((error) => {
+          this.uploadResponse = error
+          this.status = STATUS_FAILED
+        })
+      }
+    }
   }
 </script>
 
@@ -178,7 +267,7 @@
     justify-content: center;
   }
 
-  .input-line button[type=submit] {
+  button {
     font-family: 'Avenir', Helvetica, Arial, sans-serif;
     color: #2c3e50;
     height: 40px;
@@ -186,16 +275,76 @@
     background: none;
     border: 1px solid #2c3e50;
     font-size: 1.5rem;
+    cursor: pointer;
   }
 
-  .input-line button[type=submit]:hover {
+  button:hover {
     background: #2c3e50;
     color: #ffffff;
   }
 
-  .input-line button[type=submit]:active {
+  button:active {
     background: #1e2b3c;
     outline: none;
+  }
+
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    height: 100%;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .overlay > .dialog {
+    display: flex;
+    background: white;
+    z-index: 1100;
+    width: 50%;
+    height: 30%;
+    min-width: 400px;
+    min-height: 200px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .loader {
+    height: 150px;
+    width: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1200;
+  }
+
+  @keyframes rotate {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  .loader > .circle {
+    width: 140px;
+    height: 140px;
+    border: 8px solid rgba(0, 0, 0, 0);
+    border-radius: 50%;
+    border-top: 8px solid #2c3e50;
+    z-index: 1400;
+    position: absolute;
+    animation: rotate 1.5s linear infinite;
+    will-change: transform;
+  }
+  .loader > .inside {
+    width: auto;
+    z-index: 1300;
+    font-size: 1.5rem;
   }
 
 </style>

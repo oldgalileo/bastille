@@ -9,6 +9,8 @@ import (
 
 	"io/ioutil"
 
+	"encoding/json"
+
 	"github.com/rs/cors"
 	log "github.com/sirupsen/logrus"
 )
@@ -36,7 +38,10 @@ func (s *Server) init() {
 func HandlerUpload(w http.ResponseWriter, r *http.Request) {
 	var localBuff bytes.Buffer
 
-	file, header, err := r.FormFile("strategy")
+	author := r.FormValue("author")
+	name := r.FormValue("name")
+	desc := r.FormValue("desc")
+	file, header, err := r.FormFile("exec")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		r.Body.Close()
@@ -44,31 +49,40 @@ func HandlerUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	name := strings.Split(header.Filename, ".")
+	fileName := strings.Split(header.Filename, ".")[0] + ".ipd"
 	srvLog.WithFields(log.Fields{
 		"filename": header.Filename,
 	}).Info("New strategy uploaded")
 	io.Copy(&localBuff, file)
 
-	writeErr := ioutil.WriteFile(STRATEGIES_DIR+name[0]+".ipd", localBuff.Bytes(), 0755)
+	writeErr := ioutil.WriteFile(STRATEGIES_DIR+fileName, localBuff.Bytes(), 0755)
 	if writeErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		r.Body.Close()
 		srvLog.WithError(err).Error("Issue opening file for writing")
 		return
 	}
-
 	localBuff.Reset()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("{'message': 'Upload successful'}"))
+	type success struct {
+		Message string `json:"message"`
+	}
+	response := &success{"Upload successful!"}
+	responseRaw, responseErr := json.Marshal(response)
+	if responseErr == nil {
+		w.Write(responseRaw)
+	} else {
+		srvLog.WithError(responseErr).Error("Could not marshal strategy submission response")
+	}
 	r.Body.Close()
 	strategy := &Strategy{
-		ID:      getStrategyID(),
-		Name:    name[0] + ".ipd",
-		Author:  "tbd",
-		Path:    STRATEGIES_DIR + name[0],
-		Matches: []MatchID{},
+		ID:          getStrategyID(),
+		Name:        name,
+		Author:      author,
+		Description: desc,
+		Path:        STRATEGIES_DIR + fileName,
+		Matches:     []MatchID{},
 	}
 	trn.add(strategy)
 }

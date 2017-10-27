@@ -67,6 +67,13 @@ var exampleStrategies = []*Strategy{
 		Path:    EXAMPLES_DIR + "titfortat.py",
 		Matches: []MatchID{},
 	},
+	&Strategy{
+		ID:      "5",
+		Name:    "random",
+		Author:  "system",
+		Path:    EXAMPLES_DIR + "random.py",
+		Matches: []MatchID{},
+	},
 }
 
 var PayoutMatrix = map[bool]map[bool]int{
@@ -117,6 +124,7 @@ type Strategy struct {
 	ID           StrategyID `json:"id",xml:"id"`
 	Name         string     `json:"name",xml:"name"`
 	Author       string     `json:"author",xml:"author"`
+	Description  string     `json:"desc",xml:"desc"`
 	Path         string     `json:"path",xml:"path"`
 	Matches      []MatchID  `json:"matches",xml:"matches"`
 }
