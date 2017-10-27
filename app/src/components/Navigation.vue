@@ -112,7 +112,7 @@
     bottom: 0;
     left: 0;
     background-color: #2c3e50;
-    transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+    transition: transform 0.3s cubic-bezier(1, 0, 0, 1);;
   }
   .button:hover::after {
     transform: scaleY(1.5);
