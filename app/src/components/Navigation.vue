@@ -1,7 +1,7 @@
 <template>
   <div class="navbar">
     <div class="nav-content left">
-      <div class="logo">Bastille</div>
+      <router-link to="/" class="logo">Bastille</router-link>
     </div>
     <div class="nav-content right">
       <div class="text">Welcome!</div>
@@ -65,6 +65,8 @@
   }
 
   .logo {
+    color: #2c3e50;
+    text-decoration: none;
     margin-left: 20px;
     font-weight: bold;
     font-size: 2rem;
