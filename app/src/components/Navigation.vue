@@ -6,13 +6,12 @@
     <div class="nav-content right">
       <div class="text">Welcome!</div>
       <template v-if="$store.state.authLoggedIn">
-        <div class="button">Upload</div>
-        <div class="button">Leaderboard</div>
-        <div class="button">About</div>
+        <router-link to="dashboard" class="button">Dashboard</router-link>
+        <router-link to="about" class="button">About</router-link>
         <div class="button" @click="signOut">Sign Out</div>
       </template>
       <template v-else>
-        <div class="button">About</div>
+        <router-link to="about" class="button">About</router-link>
         <div class="button" @click="signIn">Sign In</div>
       </template>
     </div>
