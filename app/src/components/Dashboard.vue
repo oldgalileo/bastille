@@ -11,18 +11,18 @@
       <div class="content" v-else-if="isSuccess">
         <h2>Success!</h2>
         <p>Your strategy was uploaded successful.</p>
-        <button @click="reset()">Close</button>
+        <div class="button" @click="reset()">Close</div>
       </div>
       <div class="content" v-else-if="isFailed">
         <h2>Uh-oh!</h2>
         <p>Could not upload strategy...</p>
-        <button @click="reset()">Close</button>
+        <div class="button" @click="reset()">Close</div>
       </div>
     </div>
   </div>
   <section>
     <div class="content">
-      <form method="POST" class="form" name="strategy" enctype="multipart/form-data" @submit.prevent="uploadStrategy()">
+      <form method="POST" class="form" name="strategy" enctype="multipart/form-data">
         <ul class="inputs">
           <li class="input-line header-line"><label class="header">Submit Strategy</label></li>
           <li class="input-line">
@@ -45,7 +45,7 @@
             </template>
           </li>
           <li class="input-line">
-            <button type="submit">Submit</button>
+            <div class="submit" @click="uploadStrategy()"><div class="inner"></div>Submit</div>
           </li>
         </ul>
       </form>
@@ -267,27 +267,53 @@
     justify-content: center;
   }
 
-  button {
+  .submit {
     font-family: 'Avenir', Helvetica, Arial, sans-serif;
     color: #2c3e50;
-    height: 40px;
-    width: 40%;
+    padding: 15px;
+    padding-top: 10px;
+    padding-bottom: 10px;
     background: none;
-    border: 1px solid #2c3e50;
-    font-size: 1.5rem;
+    border: 2px solid #2c3e50;
+    font-weight: bold;
+    border-radius: 3px;
+    font-size: 1rem;
     cursor: pointer;
+    position: relative;
+    user-select: none;
   }
-
-  button:hover {
-    background: #2c3e50;
-    color: #ffffff;
+  .submit .inner {
+    left: 0;
+    top: 0;
+    background-color: #2c3e50;
+    width: 0%;
+    overflow: hidden;
+    display: flex;
+    box-sizing: border-box;
+    position: absolute;
+    content: ' ';
+    color: white;
+    transition: width 0.2s ease,
+                background-color 0.2s ease;
+    will-change: width;
+    z-index: 1;
+    color: white;
+    content: 'Submit';
   }
-
-  button:active {
-    background: #1e2b3c;
-    outline: none;
+  .submit .inner::after {
+    color: white;
+    content: 'Submit';
+    display: block;
+    padding: 15px;
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
-
+  .submit:hover .inner {
+    width: 100%;
+  }
+  .submit:active .inner {
+    background-color: #1e2b3c;
+  }
   .overlay {
     position: fixed;
     top: 0;

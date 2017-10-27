@@ -10,7 +10,7 @@
         </div>
         <div class="content" v-else>
           <h2>Success!</h2>
-          <p>Your strategy was uploaded successful.</p>
+          <p>Your strategy was uploaded successfully.</p>
         </div>
       </div>
     </div>
@@ -20,31 +20,8 @@
           <h1 class="big-header">Bastille</h1>
           <p>A new approach to programmatic IPD (Iterative Prisoner's Dilemma)</p>
         </div>
-        <!--<div class="scroll">V</div>-->
       </div>
     </section>
-    <!--<section class="gray">-->
-      <!--<div class="split left">-->
-        <!--<h1 class="header">Submit</h1>-->
-        <!--<div class="content">-->
-          <!--<p class="paragraph" style="font-size: 1.5rem; font-weight: bold;">Instructions –</p>-->
-          <!--<p class="paragraph">Please ensure that your code is in an executable format. To test if it can be executed, open up "Terminal" and run:</p>-->
-          <!--<p class="paragraph" style="text-indent: 50px;">sh -c "/path/to/your/strategy"</p>-->
-          <!--<p class="paragraph">If this command succeeds, you can upload your code. Just click the button below and select your file, kick back, and watch yourself lose to always defect.</p>-->
-          <!--<form enctype="multipart/form-data">-->
-            <!--<input type="file" name="file" id="strategy" @change="handleUpload( $event.target.files )" class="strategy-input">-->
-            <!--<label for="strategy" class="button">Submit</label>-->
-          <!--</form>-->
-        <!--</div>-->
-      <!--</div>-->
-      <!--<span class="divider"></span>-->
-      <!--<div class="split right">-->
-        <!--<h1 class="header">Leaderboard</h1>-->
-        <!--<div class="content">-->
-          <!--<h3>Coming Soon...</h3>-->
-        <!--</div>-->
-      <!--</div>-->
-    <!--</section>-->
   </div>
 </template>
 
@@ -57,13 +34,7 @@ export default {
     return {
       popup: false,
       uploading: 'INACTIVE',
-      uploadingResponse: '',
-      quotes: [
-        'Patrick is already disappointed...',
-        'In everything one thing is impossible: rationality.',
-        'Inconceivable!',
-        '"You only think I guessed wrong! That\'s what\'s so funny!" - Vizzini'
-      ]
+      uploadingResponse: ''
     }
   },
   methods: {
@@ -107,7 +78,6 @@ export default {
 }
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 .divider {
   height: 25%;
