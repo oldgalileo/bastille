@@ -39,35 +39,35 @@ var (
 )
 
 var exampleStrategies = []*Strategy{
-	&Strategy{
+	{
 		ID:      "1",
 		Name:    "allcoop",
 		Author:  "system",
 		Path:    EXAMPLES_DIR + "allcoop.py",
 		Matches: []MatchID{},
 	},
-	&Strategy{
+	{
 		ID:      "2",
 		Name:    "alldefect",
 		Author:  "system",
 		Path:    EXAMPLES_DIR + "alldefect.py",
 		Matches: []MatchID{},
 	},
-	&Strategy{
+	{
 		ID:      "3",
 		Name:    "invalidcommand",
 		Author:  "system",
 		Path:    EXAMPLES_DIR + "invalidcommand.py",
 		Matches: []MatchID{},
 	},
-	&Strategy{
+	{
 		ID:      "4",
 		Name:    "titfortat",
 		Author:  "system",
 		Path:    EXAMPLES_DIR + "titfortat.py",
 		Matches: []MatchID{},
 	},
-	&Strategy{
+	{
 		ID:      "5",
 		Name:    "random",
 		Author:  "system",
@@ -179,6 +179,7 @@ func (tm *TournamentManager) run() {
 	for {
 		select {
 		case <-exit:
+			trnLog.Info("Ending tournament...")
 			return
 		default:
 			break
@@ -199,6 +200,7 @@ func (tm *TournamentManager) run() {
 		if firstVal == lowestVal && lowestVal == 100 {
 			trnLog.Info("No new strategies... Skipping")
 			time.Sleep(3 * time.Second)
+			tm.RUnlock()
 			continue
 		}
 		tm.RUnlock()
@@ -218,7 +220,6 @@ func (tm *TournamentManager) run() {
 		tm.pairings[lowestKey] += 1
 		tm.Unlock()
 	}
-	defer trnLog.Info("Ending tournament...")
 }
 
 func (tm *TournamentManager) init() {
@@ -237,6 +238,7 @@ func (tm *TournamentManager) init() {
 
 func (tm *TournamentManager) buildPairs() {
 	tm.Lock()
+	defer tm.Unlock()
 	for _, aStrat := range tm.Strategies {
 		if aStrat.Disqualified {
 			continue
@@ -251,7 +253,6 @@ func (tm *TournamentManager) buildPairs() {
 			tm.pairings[[2]*Strategy{aStrat, bStrat}] = 0
 		}
 	}
-	tm.Unlock()
 }
 
 func (tm *TournamentManager) cleanup() {
@@ -290,6 +291,7 @@ func (tm *TournamentManager) periodic() {
 
 func (tm *TournamentManager) save() {
 	trn.RLock()
+	defer trn.RUnlock()
 	trnLog.Info("Saving core data...")
 	raw, rawErr := xml.MarshalIndent(tm, "", "    ")
 	if rawErr != nil {
@@ -305,7 +307,6 @@ func (tm *TournamentManager) save() {
 	if writeErr != nil {
 		trnLog.WithError(writeErr).Error("Could not write core data")
 	}
-	trn.RUnlock()
 }
 
 func (tm *TournamentManager) validateStrategy(id StrategyID) bool {
