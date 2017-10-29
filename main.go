@@ -45,7 +45,7 @@ func main() {
 	}()
 
 	trn.init()
-	go trn.run(cancelChan)
+	go trn.run()
 	srv.init()
 }
 

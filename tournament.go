@@ -101,6 +101,7 @@ type TournamentManager struct {
 	Strategies   map[StrategyID]*Strategy `json:"strategies",xml:"strategies"`
 	Matches      map[MatchID]*Match       `json:"matches",xml:"matches"`
 	pairings     map[[2]*Strategy]int
+	exits        []chan bool
 }
 
 type MatchID string
@@ -128,6 +129,35 @@ type Strategy struct {
 	Path         string     `json:"path",xml:"path"`
 	Disqualified bool       `json:"disqualified",xml:"disqualified"`
 	Matches      []MatchID  `json:"matches",xml:"matches"`
+	containers   chan container
+}
+
+type container struct {
+	id   string
+	port string
+}
+
+func (s *Strategy) bufferContainers(exit chan bool) {
+	for {
+		select {
+		case <-exit:
+			return
+		default:
+			break
+		}
+		//log.WithFields(log.Fields{
+		//	"prefix": "strategy",
+		//	"name":   s.Name,
+		//	"id":     s.ID,
+		//}).Debug("Creating strategy...")
+		tempContainer := createContainer()
+		err := exec.Command("docker", "cp", s.Path, tempContainer.id+":/code").Run()
+		if err != nil {
+			log.WithError(err).WithField("path", s.Path).Error("Could not copy strategy #" + string(s.ID) + " to container #" + tempContainer.id)
+			continue
+		}
+		s.containers <- tempContainer
+	}
 }
 
 func (tm *TournamentManager) add(strategy *Strategy) {
@@ -140,13 +170,16 @@ func (tm *TournamentManager) add(strategy *Strategy) {
 	}
 }
 
-func (tm *TournamentManager) run(exit chan bool) {
+func (tm *TournamentManager) run() {
 	trnLog.Info("Starting tournament...")
-exitGOTO:
+	tm.Lock()
+	exit := make(chan bool, 1)
+	tm.exits = append(tm.exits, exit)
+	tm.Unlock()
 	for {
 		select {
 		case <-exit:
-			break exitGOTO
+			return
 		default:
 			break
 		}
@@ -185,13 +218,25 @@ exitGOTO:
 		tm.pairings[lowestKey] += 1
 		tm.Unlock()
 	}
-	trnLog.Info("Ending tournament...")
+	defer trnLog.Info("Ending tournament...")
 }
 
 func (tm *TournamentManager) init() {
-	tm.Lock()
-	defer tm.Unlock()
 	tm.load()
+	tm.buildPairs()
+	for _, strategy := range tm.Strategies {
+		strategy.containers = make(chan container, 5)
+		tm.Lock()
+		exit := make(chan bool, 1)
+		tm.exits = append(tm.exits, exit)
+		tm.Unlock()
+		go strategy.bufferContainers(exit)
+	}
+	go tm.periodic()
+}
+
+func (tm *TournamentManager) buildPairs() {
+	tm.Lock()
 	for _, aStrat := range tm.Strategies {
 		if aStrat.Disqualified {
 			continue
@@ -206,11 +251,13 @@ func (tm *TournamentManager) init() {
 			tm.pairings[[2]*Strategy{aStrat, bStrat}] = 0
 		}
 	}
+	tm.Unlock()
 }
 
 func (tm *TournamentManager) cleanup() {
-	tm.RLock()
-	defer tm.RUnlock()
+	for _, exit := range tm.exits {
+		exit <- true
+	}
 	tm.save()
 }
 
@@ -235,7 +282,14 @@ func (tm *TournamentManager) load() {
 	json.Unmarshal(raw, tm)
 }
 
+func (tm *TournamentManager) periodic() {
+	for range time.Tick(1 * time.Minute) {
+		tm.save()
+	}
+}
+
 func (tm *TournamentManager) save() {
+	trn.RLock()
 	trnLog.Info("Saving core data...")
 	raw, rawErr := xml.MarshalIndent(tm, "", "    ")
 	if rawErr != nil {
@@ -250,6 +304,7 @@ func (tm *TournamentManager) save() {
 	if writeErr != nil {
 		trnLog.WithError(writeErr).Error("Could not write core data")
 	}
+	trn.RUnlock()
 }
 
 func (tm *TournamentManager) validateStrategy(id StrategyID) bool {
@@ -277,13 +332,13 @@ func (tm *TournamentManager) validateStrategy(id StrategyID) bool {
 			"count":     disqualifyCount,
 		}).Debug("Checking match #" + tempMatchID)
 		if tempMatch.PlayerA == id && !tempMatch.DisqualifiedA {
-			break
+			return true
 		}
 		if tempMatch.PlayerB == id && !tempMatch.DisqualifiedB {
-			break
+			return true
 		}
 	}
-	return !(disqualifyCount == 5)
+	return false
 }
 
 func (tm *TournamentManager) disqualifyStrategy(id StrategyID) {
@@ -330,34 +385,13 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 	}
 	tm.Matches[match.ID] = match
 	tm.Unlock()
-	aStrat.Lock()
-	bStrat.Lock()
 	aStrat.Matches = append(aStrat.Matches, match.ID)
 	bStrat.Matches = append(bStrat.Matches, match.ID)
-	aStrat.Unlock()
-	bStrat.Unlock()
 	localLog := trnLog.WithFields(log.Fields{"match": match.ID})
 	localLog.Info("Starting round...")
 
-	localLog.Debug("Creating PA container...")
-	containerA, portA := createContainer()
-	err := exec.Command("docker", "cp", aStrat.Path, containerA+":/code").Run()
-	if err != nil {
-		match.DisqualifiedA = true
-		match.DisqualifiedB = true
-		localLog.WithError(err).Error("Failed to create PA container")
-		return match
-	}
-
-	localLog.Debug("Creating PB container...")
-	containerB, portB := createContainer()
-	err = exec.Command("docker", "cp", bStrat.Path, containerB+":/code").Run()
-	if err != nil {
-		match.DisqualifiedA = true
-		match.DisqualifiedB = true
-		localLog.WithError(err).Error("Failed to create PB container")
-		return match
-	}
+	containerA := <-aStrat.containers
+	containerB := <-bStrat.containers
 
 	//time.Sleep(50 * time.Millisecond) // go run relay.go may take time to start
 
@@ -372,12 +406,12 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 	//containerB := ""
 	// docker cp $(pathToExecB) $(containerB):/code
 
-	A, err := net.Dial("tcp", "localhost:"+strconv.Itoa(portA))
+	A, err := net.Dial("tcp", net.JoinHostPort("localhost", containerA.port))
 	if err != nil {
 		localLog.WithError(err).Panic("Could not establish connection to PA container")
 	}
 	defer A.Close()
-	B, err := net.Dial("tcp", "localhost:"+strconv.Itoa(portB))
+	B, err := net.Dial("tcp", net.JoinHostPort("localhost", containerB.port))
 	if err != nil {
 		localLog.WithError(err).Panic("Could not establish connection to PB container")
 	}
@@ -487,7 +521,7 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 	return match
 }
 
-func createContainer() (string, int) {
+func createContainer() container {
 	for i := 0; i < 100; i++ {
 		port := 5000 + rand.New(rand.NewSource(time.Now().UnixNano())).Intn(4000)
 		containerRaw, err := exec.Command("docker", "run", "--rm", "-d", "-p", strconv.Itoa(port)+":10000", dockerImageID).CombinedOutput()
@@ -497,12 +531,12 @@ func createContainer() (string, int) {
 			}
 			trnLog.WithField("container", string(containerRaw)).Panic("Issue with container")
 		}
-		container := strings.Trim(string(containerRaw), "\n")
-		return container, port
+		containerID := strings.Trim(string(containerRaw), "\n")
+		return container{containerID, strconv.Itoa(port)}
 
 	}
 	trnLog.Panic("Should never reach end of function (createContainer)")
-	return "", 0
+	return container{"", ""}
 }
 
 func getMatchID() MatchID {
