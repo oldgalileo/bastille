@@ -296,7 +296,8 @@ func (tm *TournamentManager) save() {
 		var jsonErr error
 		raw, jsonErr = json.Marshal(tm)
 		if jsonErr != nil {
-			trnLog.WithError(jsonErr).Panic("Could not marshal data in both XML and JSON")
+			trnLog.WithError(jsonErr).Error("Could not marshal data in both XML and JSON")
+			return
 		}
 		trnLog.WithError(rawErr).Error("Could not marshal data in XML")
 	}
