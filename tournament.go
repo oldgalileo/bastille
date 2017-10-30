@@ -145,11 +145,6 @@ func (s *Strategy) bufferContainers(exit chan bool) {
 		default:
 			break
 		}
-		//log.WithFields(log.Fields{
-		//	"prefix": "strategy",
-		//	"name":   s.Name,
-		//	"id":     s.ID,
-		//}).Debug("Creating strategy...")
 		tempContainer := createContainer()
 		err := exec.Command("docker", "cp", s.Path, tempContainer.id+":/code").Run()
 		if err != nil {
@@ -168,6 +163,10 @@ func (tm *TournamentManager) add(strategy *Strategy) {
 		tm.pairings[[2]*Strategy{strategy, oldStrat}] = 0
 		tm.pairings[[2]*Strategy{oldStrat, strategy}] = 0
 	}
+	strategy.containers = make(chan container, 5)
+	exit := make(chan bool, 1)
+	tm.exits = append(tm.exits, exit)
+	go strategy.bufferContainers(exit)
 }
 
 func (tm *TournamentManager) run() {
