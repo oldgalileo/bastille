@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"math/rand"
 	"net"
@@ -41,7 +42,8 @@ var (
 	trnLog        = log.WithFields(log.Fields{
 		"prefix": "tournament",
 	})
-	rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
+	rnd                  = rand.New(rand.NewSource(time.Now().UnixNano()))
+	errFirstStrategyLoad = errors.New("must initialize pairings")
 )
 
 var exampleStrategies = []*Strategy{
@@ -303,6 +305,10 @@ func (tm *TournamentManager) load() {
 	tm.Strategies, stratErr = loadStrategies()
 	tm.Matches, matchErr = loadMatches()
 	tm.Pairings, pairingsErr = loadPairings()
+	if pairingsErr != nil && pairingsErr == errFirstStrategyLoad {
+		tm.buildPairs()
+		pairingsErr = nil
+	}
 
 	if leadErr == nil && stratErr == nil && matchErr == nil && pairingsErr == nil {
 		trnLog.Info("Loaded without errors!")
@@ -374,7 +380,7 @@ func loadPairings() (map[[2]StrategyID]int, error) {
 	trnLog.Info("Loading pairings...")
 	defer trnLog.Info("Finished loaded pairings!")
 	if _, err := os.Stat(TOURNAMENT_DIR + "pairings.json"); os.IsNotExist(err) {
-		return make(map[[2]StrategyID]int), nil
+		return make(map[[2]StrategyID]int), errFirstStrategyLoad
 	} else {
 		tempPairings := make(map[string]int)
 		raw, rawErr := ioutil.ReadFile(TOURNAMENT_DIR + "tempPairings.json")
