@@ -382,7 +382,7 @@ func loadPairings() (map[[2]StrategyID]int, error) {
 		return make(map[[2]StrategyID]int), errFirstStrategyLoad
 	} else {
 		tempPairings := make(map[string]int)
-		raw, rawErr := ioutil.ReadFile(TOURNAMENT_DIR + "tempPairings.json")
+		raw, rawErr := ioutil.ReadFile(TOURNAMENT_DIR + "pairings.json")
 		if rawErr != nil {
 			return nil, rawErr
 		}
@@ -456,7 +456,7 @@ func (tm *TournamentManager) saveMatches() {
 			trnLog.WithError(jsonErr).Error("Could not marshal data in both XML and JSON")
 			return
 		}
-		trnLog.WithError(rawErr).Error("Could not marshal data in XML... (this is safe to ignore)")
+		trnLog.WithError(rawErr).Warning("Could not marshal data in XML... (this is safe to ignore)")
 	}
 	writeErr := ioutil.WriteFile(TOURNAMENT_DIR+"matches.json", raw, 0644)
 	if writeErr != nil {
@@ -477,7 +477,7 @@ func (tm *TournamentManager) savePairings() {
 			trnLog.WithError(jsonErr).Error("Could not marshal data in both XML and JSON")
 			return
 		}
-		trnLog.WithError(rawErr).Error("Could not marshal data in XML... (this is safe to ignore)")
+		trnLog.WithError(rawErr).Warning("Could not marshal data in XML... (this is safe to ignore)")
 	}
 	writeErr := ioutil.WriteFile(TOURNAMENT_DIR+"pairings.json", raw, 0644)
 	if writeErr != nil {
