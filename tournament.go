@@ -593,14 +593,14 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 	for {
 		_, err = io.ReadFull(A, Am)
 		if err != nil {
-			localLog.WithFields(log.Fields{"a-name": aStrat.Name, "a-id": match.PlayerA}).Warn("A Disqualified due to stream closed")
+			localLog.WithError(err).WithFields(log.Fields{"a-name": aStrat.Name, "a-id": match.PlayerA}).Warn("A Disqualified due to stream closed")
 			match.DisqualifiedA = true
 			return match
 		}
 
 		_, err = io.ReadFull(B, Bm)
 		if err != nil {
-			localLog.WithFields(log.Fields{"b-name": bStrat.Name, "b-id": match.PlayerB}).Warn("B Disqualified due to stream closed")
+			localLog.WithError(err).WithFields(log.Fields{"b-name": bStrat.Name, "b-id": match.PlayerB}).Warn("B Disqualified due to stream closed")
 			match.DisqualifiedB = true
 			return match
 		}
