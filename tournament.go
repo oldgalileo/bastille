@@ -252,7 +252,6 @@ func (tm *TournamentManager) run() {
 
 func (tm *TournamentManager) init() {
 	tm.load()
-	tm.buildPairs()
 	for _, strategy := range tm.Strategies {
 		strategy.containers = make(chan container, 5)
 		tm.Lock()
