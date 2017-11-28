@@ -30,6 +30,12 @@ const STRATEGIES_DIR = "strategies/"
 const EXAMPLES_DIR = "examples/"
 const TOURNAMENT_DIR = "tournament/"
 
+const (
+	rock byte = iota
+	paper
+	scissors
+)
+
 var (
 	dockerImageID string
 	trnLog        = log.WithFields(log.Fields{
@@ -41,49 +47,70 @@ var (
 var exampleStrategies = []*Strategy{
 	{
 		ID:      "1",
-		Name:    "allcoop",
+		Name:    "one-third",
 		Author:  "system",
-		Path:    EXAMPLES_DIR + "allcoop.py",
+		Path:    EXAMPLES_DIR + "standardrps.py",
 		Matches: []MatchID{},
 	},
 	{
 		ID:      "2",
-		Name:    "alldefect",
+		Name:    "one-third-two",
 		Author:  "system",
-		Path:    EXAMPLES_DIR + "alldefect.py",
+		Path:    EXAMPLES_DIR + "standardrps.py",
 		Matches: []MatchID{},
 	},
-	{
-		ID:      "3",
-		Name:    "invalidcommand",
-		Author:  "system",
-		Path:    EXAMPLES_DIR + "invalidcommand.py",
-		Matches: []MatchID{},
-	},
-	{
-		ID:      "4",
-		Name:    "titfortat",
-		Author:  "system",
-		Path:    EXAMPLES_DIR + "titfortat.py",
-		Matches: []MatchID{},
-	},
-	{
-		ID:      "5",
-		Name:    "random",
-		Author:  "system",
-		Path:    EXAMPLES_DIR + "random.py",
-		Matches: []MatchID{},
-	},
+	//{
+	//	ID:      "1",
+	//	Name:    "allcoop",
+	//	Author:  "system",
+	//	Path:    EXAMPLES_DIR + "allcoop.py",
+	//	Matches: []MatchID{},
+	//},
+	//{
+	//	ID:      "2",
+	//	Name:    "alldefect",
+	//	Author:  "system",
+	//	Path:    EXAMPLES_DIR + "alldefect.py",
+	//	Matches: []MatchID{},
+	//},
+	//{
+	//	ID:      "3",
+	//	Name:    "invalidcommand",
+	//	Author:  "system",
+	//	Path:    EXAMPLES_DIR + "invalidcommand.py",
+	//	Matches: []MatchID{},
+	//},
+	//{
+	//	ID:      "4",
+	//	Name:    "titfortat",
+	//	Author:  "system",
+	//	Path:    EXAMPLES_DIR + "titfortat.py",
+	//	Matches: []MatchID{},
+	//},
+	//{
+	//	ID:      "5",
+	//	Name:    "random",
+	//	Author:  "system",
+	//	Path:    EXAMPLES_DIR + "random.py",
+	//	Matches: []MatchID{},
+	//},
 }
 
-var PayoutMatrix = map[bool]map[bool]int{
-	true: {
-		true:  3,
-		false: 0,
+var PayoutMatrix = map[byte]map[byte]int{
+	rock: {
+		rock:     1,
+		paper:    2,
+		scissors: 0,
 	},
-	false: {
-		true:  5,
-		false: 1,
+	paper: {
+		rock:     0,
+		paper:    1,
+		scissors: 2,
+	},
+	scissors: {
+		rock:     2,
+		paper:    0,
+		scissors: 1,
 	},
 }
 
@@ -97,10 +124,10 @@ func init() {
 
 type TournamentManager struct {
 	sync.RWMutex `json:"-",xml:"-"`
-	Leaderboard  map[StrategyID]float32   `json:"leaderboard",xml:"leaderboard"`
-	Strategies   map[StrategyID]*Strategy `json:"strategies",xml:"strategies"`
-	Matches      map[MatchID]*Match       `json:"matches",xml:"matches"`
-	pairings     map[[2]*Strategy]int
+	Leaderboard  map[StrategyID]float32
+	Strategies   map[StrategyID]*Strategy
+	Matches      map[MatchID]*Match
+	Pairings     map[[2]StrategyID]int
 	exits        []chan bool
 }
 
@@ -159,9 +186,9 @@ func (tm *TournamentManager) add(strategy *Strategy) {
 	tm.Lock()
 	defer tm.Unlock()
 	tm.Strategies[strategy.ID] = strategy
-	for _, oldStrat := range tm.Strategies {
-		tm.pairings[[2]*Strategy{strategy, oldStrat}] = 0
-		tm.pairings[[2]*Strategy{oldStrat, strategy}] = 0
+	for oldStrat, _ := range tm.Strategies {
+		tm.Pairings[[2]StrategyID{strategy.ID, oldStrat}] = 0
+		tm.Pairings[[2]StrategyID{oldStrat, strategy.ID}] = 0
 	}
 	strategy.containers = make(chan container, 5)
 	exit := make(chan bool, 1)
@@ -183,11 +210,11 @@ func (tm *TournamentManager) run() {
 		default:
 			break
 		}
-		lowestKey := [2]*Strategy{exampleStrategies[0], exampleStrategies[1]}
+		lowestKey := [2]StrategyID{exampleStrategies[0].ID, exampleStrategies[1].ID}
 		lowestVal := math.MaxInt32
 		firstVal := math.MaxInt32
 		tm.RLock()
-		for pairing, played := range tm.pairings {
+		for pairing, played := range tm.Pairings {
 			if lowestVal == math.MaxInt32 {
 				firstVal = played
 			}
@@ -203,7 +230,7 @@ func (tm *TournamentManager) run() {
 			continue
 		}
 		tm.RUnlock()
-		match := tm.playAgainst(lowestKey[0], lowestKey[1])
+		match := tm.playAgainst(tm.Strategies[lowestKey[0]], tm.Strategies[lowestKey[1]])
 		if match.DisqualifiedA && !tm.validateStrategy(match.PlayerA) {
 			tm.disqualifyStrategy(match.PlayerA)
 			continue
@@ -214,9 +241,9 @@ func (tm *TournamentManager) run() {
 		}
 		// heck yeah
 		tm.Lock()
-		tm.Leaderboard[match.PlayerA] = float32((tm.Leaderboard[match.PlayerA]*float32(len(lowestKey[0].Matches)-1) + float32(match.ScoreA)) / float32(len(lowestKey[0].Matches)))
-		tm.Leaderboard[match.PlayerB] = float32((tm.Leaderboard[match.PlayerB]*float32(len(lowestKey[1].Matches)-1) + float32(match.ScoreB)) / float32(len(lowestKey[1].Matches)))
-		tm.pairings[lowestKey] += 1
+		tm.Leaderboard[match.PlayerA] = float32((tm.Leaderboard[match.PlayerA]*float32(len(tm.Strategies[lowestKey[0]].Matches)-1) + float32(match.ScoreA)) / float32(len(tm.Strategies[lowestKey[0]].Matches)))
+		tm.Leaderboard[match.PlayerB] = float32((tm.Leaderboard[match.PlayerB]*float32(len(tm.Strategies[lowestKey[1]].Matches)-1) + float32(match.ScoreB)) / float32(len(tm.Strategies[lowestKey[1]].Matches)))
+		tm.Pairings[lowestKey] += 1
 		tm.Unlock()
 	}
 }
@@ -238,18 +265,18 @@ func (tm *TournamentManager) init() {
 func (tm *TournamentManager) buildPairs() {
 	tm.Lock()
 	defer tm.Unlock()
-	for _, aStrat := range tm.Strategies {
+	for aStratID, aStrat := range tm.Strategies {
 		if aStrat.Disqualified {
 			continue
 		}
-		for _, bStrat := range tm.Strategies {
+		for bStratID, bStrat := range tm.Strategies {
 			if bStrat.Disqualified {
 				continue
 			}
 			if aStrat.ID == bStrat.ID {
 				continue
 			}
-			tm.pairings[[2]*Strategy{aStrat, bStrat}] = 0
+			tm.Pairings[[2]StrategyID{aStratID, bStratID}] = 0
 		}
 	}
 }
@@ -262,24 +289,106 @@ func (tm *TournamentManager) cleanup() {
 }
 
 func (tm *TournamentManager) load() {
-	trnLog.Info("Loading core data...")
+	trnLog.Info("Loading tournament data...")
 	defer trnLog.Info("Successfully loaded!")
-	tm.pairings = make(map[[2]*Strategy]int)
-	if _, err := os.Stat(TOURNAMENT_DIR + "core.json"); os.IsNotExist(err) {
-		trnLog.Info("Could not find core data. Initializing...")
-		tm.Leaderboard = make(map[StrategyID]float32)
-		tm.Strategies = make(map[StrategyID]*Strategy)
-		tm.Matches = make(map[MatchID]*Match)
-		for _, strategy := range exampleStrategies {
-			tm.Strategies[strategy.ID] = strategy
+
+	var (
+		leadErr     error
+		stratErr    error
+		matchErr    error
+		pairingsErr error
+	)
+
+	tm.Leaderboard, leadErr = loadLeaderboard()
+	tm.Strategies, stratErr = loadStrategies()
+	tm.Matches, matchErr = loadMatches()
+	tm.Pairings, pairingsErr = loadPairings()
+
+	if leadErr == nil && stratErr == nil && matchErr == nil && pairingsErr == nil {
+		trnLog.Info("Loaded without errors!")
+	} else {
+		trnLog.WithFields(log.Fields{
+			"lead":  leadErr,
+			"strat": stratErr,
+			"match": matchErr,
+			"pair":  pairingsErr,
+		}).Info("Errors occurred while loading...")
+	}
+
+	tm.exits = []chan bool{}
+}
+
+func loadLeaderboard() (map[StrategyID]float32, error) {
+	trnLog.Info("Loading leaderboard...")
+	defer trnLog.Info("Finished loaded leaderboard!")
+	if _, err := os.Stat(TOURNAMENT_DIR + "leaderboard.json"); os.IsNotExist(err) {
+		return make(map[StrategyID]float32), nil
+	} else {
+		leaderboard := make(map[StrategyID]float32)
+		raw, rawErr := ioutil.ReadFile(TOURNAMENT_DIR + "leaderboard.json")
+		if rawErr != nil {
+			return leaderboard, rawErr
 		}
-		return
+		json.Unmarshal(raw, &leaderboard)
+		return leaderboard, nil
 	}
-	raw, rawErr := ioutil.ReadFile(TOURNAMENT_DIR + "core.json")
-	if rawErr != nil {
-		trnLog.WithError(rawErr).Panic("Could not read core data")
+}
+
+func loadStrategies() (map[StrategyID]*Strategy, error) {
+	trnLog.Info("Loading strategies...")
+	defer trnLog.Info("Finished loaded strategies!")
+	if _, err := os.Stat(STRATEGIES_DIR + "core.json"); os.IsNotExist(err) {
+		strategies := make(map[StrategyID]*Strategy)
+		for _, strategy := range exampleStrategies {
+			strategies[strategy.ID] = strategy
+		}
+		return strategies, nil
+	} else {
+		strategies := make(map[StrategyID]*Strategy)
+		raw, rawErr := ioutil.ReadFile(STRATEGIES_DIR + "core.json")
+		if rawErr != nil {
+			return strategies, rawErr
+		}
+		json.Unmarshal(raw, &strategies)
+		return strategies, nil
 	}
-	json.Unmarshal(raw, tm)
+}
+
+func loadMatches() (map[MatchID]*Match, error) {
+	trnLog.Info("Loading matches...")
+	defer trnLog.Info("Finished loaded matches!")
+	if _, err := os.Stat(TOURNAMENT_DIR + "matches.json"); os.IsNotExist(err) {
+		return make(map[MatchID]*Match), nil
+	} else {
+		matches := make(map[MatchID]*Match)
+		raw, rawErr := ioutil.ReadFile(TOURNAMENT_DIR + "matches.json")
+		if rawErr != nil {
+			return matches, rawErr
+		}
+		json.Unmarshal(raw, &matches)
+		return matches, nil
+	}
+}
+
+func loadPairings() (map[[2]StrategyID]int, error) {
+	trnLog.Info("Loading pairings...")
+	defer trnLog.Info("Finished loaded pairings!")
+	if _, err := os.Stat(TOURNAMENT_DIR + "pairings.json"); os.IsNotExist(err) {
+		return make(map[[2]StrategyID]int), nil
+	} else {
+		tempPairings := make(map[string]int)
+		raw, rawErr := ioutil.ReadFile(TOURNAMENT_DIR + "tempPairings.json")
+		if rawErr != nil {
+			return nil, rawErr
+		}
+		json.Unmarshal(raw, &tempPairings)
+		pairings := make(map[[2]StrategyID]int)
+		for key, value := range tempPairings {
+			split := strings.Split(key, "-")
+			pairings[[2]StrategyID{StrategyID(split[0]), StrategyID(split[1])}] = value
+		}
+		return pairings, nil
+	}
 }
 
 func (tm *TournamentManager) periodic() {
@@ -291,23 +400,85 @@ func (tm *TournamentManager) periodic() {
 func (tm *TournamentManager) save() {
 	trn.RLock()
 	defer trn.RUnlock()
-	trnLog.Info("Saving core data...")
-	raw, rawErr := xml.MarshalIndent(tm, "", "    ")
+	trnLog.Info("Saving tournament data...")
+	tm.saveLeaderboard()
+	tm.saveStrategies()
+	tm.saveMatches()
+	tm.savePairings()
+	trnLog.Info("Finished saving tournament data...")
+}
+
+func (tm *TournamentManager) saveLeaderboard() {
+	raw, rawErr := xml.MarshalIndent(tm.Leaderboard, "", "    ")
 	if rawErr != nil {
 		var jsonErr error
-		raw, jsonErr = json.Marshal(tm)
+		raw, jsonErr = json.Marshal(tm.Leaderboard)
 		if jsonErr != nil {
 			trnLog.WithError(jsonErr).Error("Could not marshal data in both XML and JSON")
 			return
 		}
-		trnLog.WithError(rawErr).Error("Could not marshal data in XML")
+		trnLog.WithError(rawErr).Warning("Could not marshal data in XML... (this is safe to ignore)")
 	}
-	writeErr := ioutil.WriteFile(TOURNAMENT_DIR+"core.json", raw, 0644)
+	writeErr := ioutil.WriteFile(TOURNAMENT_DIR+"leaderboard.json", raw, 0644)
 	if writeErr != nil {
 		trnLog.WithError(writeErr).Error("Could not write core data")
 	}
 }
 
+func (tm *TournamentManager) saveStrategies() {
+	raw, rawErr := xml.MarshalIndent(tm.Strategies, "", "    ")
+	if rawErr != nil {
+		var jsonErr error
+		raw, jsonErr = json.Marshal(tm.Strategies)
+		if jsonErr != nil {
+			trnLog.WithError(jsonErr).Error("Could not marshal data in both XML and JSON")
+			return
+		}
+		trnLog.WithError(rawErr).Warning("Could not marshal data in XML... (this is safe to ignore)")
+	}
+	writeErr := ioutil.WriteFile(STRATEGIES_DIR+"core.json", raw, 0644)
+	if writeErr != nil {
+		trnLog.WithError(writeErr).Error("Could not write core data")
+	}
+}
+
+func (tm *TournamentManager) saveMatches() {
+	raw, rawErr := xml.MarshalIndent(tm.Matches, "", "    ")
+	if rawErr != nil {
+		var jsonErr error
+		raw, jsonErr = json.Marshal(tm.Matches)
+		if jsonErr != nil {
+			trnLog.WithError(jsonErr).Error("Could not marshal data in both XML and JSON")
+			return
+		}
+		trnLog.WithError(rawErr).Error("Could not marshal data in XML... (this is safe to ignore)")
+	}
+	writeErr := ioutil.WriteFile(TOURNAMENT_DIR+"matches.json", raw, 0644)
+	if writeErr != nil {
+		trnLog.WithError(writeErr).Error("Could not write core data")
+	}
+}
+
+func (tm *TournamentManager) savePairings() {
+	tempPairings := make(map[string]int)
+	for key, value := range tm.Pairings {
+		tempPairings[string(key[0])+"-"+string(key[1])] = value
+	}
+	raw, rawErr := xml.MarshalIndent(tempPairings, "", "    ")
+	if rawErr != nil {
+		var jsonErr error
+		raw, jsonErr = json.Marshal(tempPairings)
+		if jsonErr != nil {
+			trnLog.WithError(jsonErr).Error("Could not marshal data in both XML and JSON")
+			return
+		}
+		trnLog.WithError(rawErr).Error("Could not marshal data in XML... (this is safe to ignore)")
+	}
+	writeErr := ioutil.WriteFile(TOURNAMENT_DIR+"pairings.json", raw, 0644)
+	if writeErr != nil {
+		trnLog.WithError(writeErr).Error("Could not write core data")
+	}
+}
 func (tm *TournamentManager) validateStrategy(id StrategyID) bool {
 	strategy := tm.Strategies[id]
 	trnLog.WithFields(log.Fields{
@@ -362,9 +533,9 @@ func (tm *TournamentManager) disqualifyStrategy(id StrategyID) {
 		tm.Leaderboard[enemyID] = ((tm.Leaderboard[enemyID] * float32(len(enemy.Matches))) - enemyScore) / float32(len(enemy.Matches)-1)
 		tm.Unlock()
 	}
-	for key := range tm.pairings {
-		if key[0] == strategy || key[1] == strategy {
-			delete(tm.pairings, key)
+	for key := range tm.Pairings {
+		if key[0] == id || key[1] == id {
+			delete(tm.Pairings, key)
 		}
 	}
 	strategy.Disqualified = true
@@ -394,18 +565,7 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 	containerA := <-aStrat.containers
 	containerB := <-bStrat.containers
 
-	//time.Sleep(50 * time.Millisecond) // go run relay.go may take time to start
-
-	// cd dock && docker build .
-	//dockerImage := "9e983c4697fc"
-
-	// docker run --rm -p 5000:10000 $(dockerImage)
-	//containerA := ""
-	// docker cp $(pathToExecA) $(containerA):/code
-
-	// docker run --rm -p 6000:10000 $(dockerImage)
-	//containerB := ""
-	// docker cp $(pathToExecB) $(containerB):/code
+	time.Sleep(75 * time.Millisecond) // go run relay.go may take time to start
 
 	A, err := net.Dial("tcp", net.JoinHostPort("localhost", containerA.port))
 	if err != nil {
@@ -440,7 +600,7 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 			return match
 		}
 
-		if Am[0] != 0 && Am[0] != 1 {
+		if _, ok := PayoutMatrix[Am[0]]; !ok {
 			localLog.WithFields(log.Fields{"a-name": aStrat.Name, "a-id": match.PlayerA}).Warn("A made invalid move")
 			match.DisqualifiedA = true
 			localLog.WithFields(log.Fields{
@@ -458,7 +618,7 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 			return match
 		}
 
-		if Bm[0] != 0 && Bm[0] != 1 {
+		if _, ok := PayoutMatrix[Bm[0]]; !ok {
 			localLog.WithFields(log.Fields{"b-name": bStrat.Name, "b-id": match.PlayerB}).Warn("B made invalid move")
 			match.DisqualifiedB = true
 			localLog.WithFields(log.Fields{
@@ -476,22 +636,11 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 			return match
 		}
 
-		Amove := Am[0] == 1
-		Bmove := Bm[0] == 1
+		AScore += PayoutMatrix[Am[0]][Bm[0]]
+		BScore += PayoutMatrix[Bm[0]][Am[0]]
 
-		AScore += PayoutMatrix[Amove][Bmove]
-		BScore += PayoutMatrix[Bmove][Amove]
-
-		if Amove { // let the other one know what just happened
-			B.Write([]byte{1})
-		} else {
-			B.Write([]byte{0})
-		}
-		if Bmove {
-			A.Write([]byte{1})
-		} else {
-			A.Write([]byte{0})
-		}
+		B.Write([]byte{Am[0]})
+		A.Write([]byte{Bm[0]})
 
 		match.Rounds++
 		if rnd.Float32() < 0.0003 && match.Rounds > 100 {
