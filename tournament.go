@@ -61,41 +61,6 @@ var exampleStrategies = []*Strategy{
 		Path:    EXAMPLES_DIR + "standardrps.py",
 		Matches: []MatchID{},
 	},
-	//{
-	//	ID:      "1",
-	//	Name:    "allcoop",
-	//	Author:  "system",
-	//	Path:    EXAMPLES_DIR + "allcoop.py",
-	//	Matches: []MatchID{},
-	//},
-	//{
-	//	ID:      "2",
-	//	Name:    "alldefect",
-	//	Author:  "system",
-	//	Path:    EXAMPLES_DIR + "alldefect.py",
-	//	Matches: []MatchID{},
-	//},
-	//{
-	//	ID:      "3",
-	//	Name:    "invalidcommand",
-	//	Author:  "system",
-	//	Path:    EXAMPLES_DIR + "invalidcommand.py",
-	//	Matches: []MatchID{},
-	//},
-	//{
-	//	ID:      "4",
-	//	Name:    "titfortat",
-	//	Author:  "system",
-	//	Path:    EXAMPLES_DIR + "titfortat.py",
-	//	Matches: []MatchID{},
-	//},
-	//{
-	//	ID:      "5",
-	//	Name:    "random",
-	//	Author:  "system",
-	//	Path:    EXAMPLES_DIR + "random.py",
-	//	Matches: []MatchID{},
-	//},
 }
 
 var PayoutMatrix = map[byte]map[byte]int{
@@ -174,6 +139,15 @@ func (s *Strategy) bufferContainers(exit chan bool) {
 		default:
 			break
 		}
+		if s.Disqualified {
+			select {
+			case ctnr := <-s.containers:
+				killContainer(ctnr.id)
+				continue
+			default:
+				exit <- true
+			}
+		}
 		tempContainer := createContainer()
 		err := exec.Command("docker", "cp", s.Path, tempContainer.id+":/code").Run()
 		if err != nil {
@@ -192,7 +166,7 @@ func (tm *TournamentManager) add(strategy *Strategy) {
 		tm.Pairings[[2]StrategyID{strategy.ID, oldStrat}] = 0
 		tm.Pairings[[2]StrategyID{oldStrat, strategy.ID}] = 0
 	}
-	strategy.containers = make(chan container, 5)
+	strategy.containers = make(chan container, 1)
 	exit := make(chan bool, 1)
 	tm.exits = append(tm.exits, exit)
 	go strategy.bufferContainers(exit)
@@ -569,6 +543,14 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 
 	containerA := <-aStrat.containers
 	containerB := <-bStrat.containers
+	killContainer := func(id string, strat *Strategy) {
+		err := exec.Command("docker", "rm", id).Run()
+		if err != nil {
+			localLog.WithError(err).WithFields(log.Fields{"strat-name": strat.Name, "strat-id": strat.ID, "container-id": id}).Error("Could not kill docker container!")
+		}
+	}
+	defer killContainer(containerA.id, aStrat)
+	defer killContainer(containerB.id, bStrat)
 
 	time.Sleep(75 * time.Millisecond) // go run relay.go may take time to start
 
@@ -692,6 +674,13 @@ func createContainer() container {
 	}
 	trnLog.Panic("Should never reach end of function (createContainer)")
 	return container{"", ""}
+}
+
+func killContainer(id string) {
+	err := exec.Command("docker", "kill", id).Run()
+	if err != nil {
+		trnLog.WithError(err).WithField("container", id).Error("Could not kill container...")
+	}
 }
 
 func getMatchID() MatchID {

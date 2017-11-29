@@ -11,6 +11,7 @@ import (
 
 	"encoding/json"
 
+	"github.com/kennygrant/sanitize"
 	"github.com/rs/cors"
 	log "github.com/sirupsen/logrus"
 )
@@ -51,7 +52,8 @@ func HandleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	fileName := strings.Split(header.Filename, ".")[0] + ".ipd"
+	fileName := sanitize.BaseName(header.Filename)
+	fileName = strings.Split(header.Filename, ".")[0] + ".bstl"
 	srvLog.WithFields(log.Fields{
 		"filename": header.Filename,
 	}).Info("New strategy uploaded")
