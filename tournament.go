@@ -38,8 +38,11 @@ const (
 )
 
 var (
-	dockerImageID string
-	trnLog        = log.WithFields(log.Fields{
+	dockerImageID     string
+	dockerHistoryLock sync.Mutex
+	dockerHistory     = make(map[string]container)
+
+	trnLog = log.WithFields(log.Fields{
 		"prefix": "tournament",
 	})
 	rnd                  = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -51,14 +54,14 @@ var exampleStrategies = []*Strategy{
 		ID:      "1",
 		Name:    "one-third",
 		Author:  "system",
-		Path:    EXAMPLES_DIR + "standardrps.py",
+		Path:    STRATEGIES_DIR + "RPS_Strat_1.ipd",
 		Matches: []MatchID{},
 	},
 	{
 		ID:      "2",
 		Name:    "one-third-two",
 		Author:  "system",
-		Path:    EXAMPLES_DIR + "standardrps.py",
+		Path:    STRATEGIES_DIR + "RPS_Strat_1.ipd",
 		Matches: []MatchID{},
 	},
 }
@@ -124,6 +127,7 @@ type Strategy struct {
 	Disqualified bool       `json:"disqualified",xml:"disqualified"`
 	Matches      []MatchID  `json:"matches",xml:"matches"`
 	containers   chan container
+	toggle       chan bool
 }
 
 type container struct {
@@ -142,7 +146,7 @@ func (s *Strategy) bufferContainers(exit chan bool) {
 		if s.Disqualified {
 			select {
 			case ctnr := <-s.containers:
-				killContainer(ctnr.id)
+				killContainer(ctnr)
 				continue
 			default:
 				exit <- true
@@ -201,8 +205,8 @@ func (tm *TournamentManager) run() {
 		}
 		if firstVal == lowestVal && lowestVal == 100 {
 			trnLog.Info("No new strategies... Skipping")
-			time.Sleep(3 * time.Second)
 			tm.RUnlock()
+			time.Sleep(3 * time.Second)
 			continue
 		}
 		tm.RUnlock()
@@ -227,7 +231,7 @@ func (tm *TournamentManager) run() {
 func (tm *TournamentManager) init() {
 	tm.load()
 	for _, strategy := range tm.Strategies {
-		strategy.containers = make(chan container, 5)
+		strategy.containers = make(chan container, 1)
 		tm.Lock()
 		exit := make(chan bool, 1)
 		tm.exits = append(tm.exits, exit)
@@ -261,6 +265,9 @@ func (tm *TournamentManager) cleanup() {
 		exit <- true
 	}
 	tm.save()
+	for _, container := range dockerHistory {
+		killContainer(container)
+	}
 }
 
 func (tm *TournamentManager) load() {
@@ -523,6 +530,7 @@ func (tm *TournamentManager) disqualifyStrategy(id StrategyID) {
 
 func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 	tm.Lock()
+	defer tm.Unlock()
 	match := &Match{
 		ID:            getMatchID(),
 		PlayerA:       aStrat.ID,
@@ -535,7 +543,6 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 		Timestamp:     time.Now().UnixNano(),
 	}
 	tm.Matches[match.ID] = match
-	tm.Unlock()
 	aStrat.Matches = append(aStrat.Matches, match.ID)
 	bStrat.Matches = append(bStrat.Matches, match.ID)
 	localLog := trnLog.WithFields(log.Fields{"match": match.ID})
@@ -543,14 +550,8 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 
 	containerA := <-aStrat.containers
 	containerB := <-bStrat.containers
-	killContainer := func(id string, strat *Strategy) {
-		err := exec.Command("docker", "rm", id).Run()
-		if err != nil {
-			localLog.WithError(err).WithFields(log.Fields{"strat-name": strat.Name, "strat-id": strat.ID, "container-id": id}).Error("Could not kill docker container!")
-		}
-	}
-	defer killContainer(containerA.id, aStrat)
-	defer killContainer(containerB.id, bStrat)
+	defer killContainer(containerA)
+	defer killContainer(containerB)
 
 	time.Sleep(75 * time.Millisecond) // go run relay.go may take time to start
 
@@ -636,6 +637,10 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 		A.SetDeadline(time.Now().Add(50 * time.Millisecond)) // short deadline for subsequent moves
 		B.SetDeadline(time.Now().Add(50 * time.Millisecond))
 	}
+	exec.Command("docker", "cp", containerA.id+":/history.txt", "history/"+match.ID+"-"+aStrat.ID).Run()
+	exec.Command("docker", "cp", containerB.id+":/history.txt", "history/"+match.ID+"-"+bStrat.ID).Run()
+	A.Write([]byte{})
+	B.Write([]byte{})
 	match.ScoreA = float32(AScore) / float32(match.Rounds)
 	match.ScoreB = float32(BScore) / float32(match.Rounds)
 	localLog.WithFields(log.Fields{
@@ -668,19 +673,27 @@ func createContainer() container {
 			}
 			trnLog.WithField("container", string(containerRaw)).Panic("Issue with container")
 		}
+		trnLog.Debug("Created container " + string(containerRaw)[:8])
 		containerID := strings.Trim(string(containerRaw), "\n")
-		return container{containerID, strconv.Itoa(port)}
+		container := container{containerID, strconv.Itoa(port)}
+		dockerHistoryLock.Lock()
+		dockerHistory[container.id] = container
+		dockerHistoryLock.Unlock()
+		return container
 
 	}
 	trnLog.Panic("Should never reach end of function (createContainer)")
 	return container{"", ""}
 }
 
-func killContainer(id string) {
-	err := exec.Command("docker", "kill", id).Run()
+func killContainer(cntr container) {
+	err := exec.Command("docker", "kill", cntr.id).Run()
 	if err != nil {
-		trnLog.WithError(err).WithField("container", id).Error("Could not kill container...")
+		trnLog.WithError(err).WithField("container", cntr.id).Warning("Could not kill container...")
 	}
+	dockerHistoryLock.Lock()
+	delete(dockerHistory, cntr.id)
+	dockerHistoryLock.Unlock()
 }
 
 func getMatchID() MatchID {
