@@ -32,9 +32,8 @@ const EXAMPLES_DIR = "examples/"
 const TOURNAMENT_DIR = "tournament/"
 
 const (
-	rock byte = iota
-	paper
-	scissors
+	betray byte = iota
+	coop
 )
 
 var (
@@ -67,20 +66,13 @@ var exampleStrategies = []*Strategy{
 }
 
 var PayoutMatrix = map[byte]map[byte]int{
-	rock: {
-		rock:     1,
-		paper:    2,
-		scissors: 0,
+	coop: {
+		coop:   3,
+		betray: 0,
 	},
-	paper: {
-		rock:     0,
-		paper:    1,
-		scissors: 2,
-	},
-	scissors: {
-		rock:     2,
-		paper:    0,
-		scissors: 1,
+	betray: {
+		coop:   5,
+		betray: 1,
 	},
 }
 
