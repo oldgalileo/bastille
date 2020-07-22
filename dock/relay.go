@@ -14,6 +14,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("Relay is listening on 10000")
+
 	conn, err := ln.Accept()
 	if err != nil {
 		panic(err)
