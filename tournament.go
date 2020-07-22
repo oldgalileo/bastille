@@ -47,20 +47,47 @@ var (
 	rnd                  = rand.New(rand.NewSource(time.Now().UnixNano()))
 	errFirstStrategyLoad = errors.New("must initialize pairings")
 )
-
 var exampleStrategies = []*Strategy{
 	{
 		ID:      "1",
-		Name:    "one-third",
+		Name:    "allcoop",
 		Author:  "system",
-		Path:    STRATEGIES_DIR + "RPS_Strat_1.ipd",
+		Path:    EXAMPLES_DIR + "allcoop.py",
 		Matches: []MatchID{},
 	},
 	{
 		ID:      "2",
-		Name:    "one-third-two",
+		Name:    "alldefect",
 		Author:  "system",
-		Path:    STRATEGIES_DIR + "RPS_Strat_1.ipd",
+		Path:    EXAMPLES_DIR + "alldefect.py",
+		Matches: []MatchID{},
+	},
+	{
+		ID:      "3",
+		Name:    "invalidcommand",
+		Author:  "system",
+		Path:    EXAMPLES_DIR + "invalidcommand.py",
+		Matches: []MatchID{},
+	},
+	{
+		ID:      "4",
+		Name:    "invalidquit",
+		Author:  "system",
+		Path:    EXAMPLES_DIR + "invalidquit.py",
+		Matches: []MatchID{},
+	},
+	{
+		ID:      "5",
+		Name:    "random",
+		Author:  "system",
+		Path:    EXAMPLES_DIR + "random.py",
+		Matches: []MatchID{},
+	},
+	{
+		ID:      "6",
+		Name:    "titfortat",
+		Author:  "system",
+		Path:    EXAMPLES_DIR + "titfortat.bash",
 		Matches: []MatchID{},
 	},
 }
