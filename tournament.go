@@ -265,9 +265,23 @@ func (tm *TournamentManager) cleanup() {
 		exit <- true
 	}
 	tm.save()
-	for _, container := range dockerHistory {
-		killContainer(container)
+	//for _, strat := range tm.Strategies {
+	//	for {
+	//		select {
+	//		case cntr := <-strat.containers:
+	//			killContainer(cntr)
+	//			continue
+	//		default:
+	//			break
+	//		}
+	//		return
+	//	}
+	//}
+	dockerHistoryLock.Lock()
+	for _, cntr := range dockerHistory {
+		killContainer(cntr)
 	}
+	dockerHistoryLock.Unlock()
 }
 
 func (tm *TournamentManager) load() {
@@ -637,8 +651,8 @@ func (tm *TournamentManager) playAgainst(aStrat, bStrat *Strategy) *Match {
 		A.SetDeadline(time.Now().Add(50 * time.Millisecond)) // short deadline for subsequent moves
 		B.SetDeadline(time.Now().Add(50 * time.Millisecond))
 	}
-	exec.Command("docker", "cp", containerA.id+":/history.txt", "history/"+match.ID+"-"+aStrat.ID).Run()
-	exec.Command("docker", "cp", containerB.id+":/history.txt", "history/"+match.ID+"-"+bStrat.ID).Run()
+	exec.Command("docker", "cp", containerA.id+":/stuff/history.txt", "history/"+string(match.ID)+"-"+string(aStrat.ID)).Run()
+	exec.Command("docker", "cp", containerB.id+":/stuff/history.txt", "history/"+string(match.ID)+"-"+string(bStrat.ID)).Run()
 	A.Write([]byte{})
 	B.Write([]byte{})
 	match.ScoreA = float32(AScore) / float32(match.Rounds)
