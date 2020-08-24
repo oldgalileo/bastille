@@ -104,7 +104,7 @@ var PayoutMatrix = map[byte]map[byte]int{
 }
 
 func init() {
-	imageIDRaw, err := exec.Command("docker", "build", "-q", "dock").CombinedOutput()
+	imageIDRaw, err := exec.Command("docker", "pull", "-q", "howardstark/bastille-relay:latest").CombinedOutput()
 	if err != nil {
 		log.WithError(err).Panic("Couldn't build docker image with image id: ", string(imageIDRaw))
 	}

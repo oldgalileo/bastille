@@ -27,6 +27,8 @@ type Server struct{}
 func (s *Server) init() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/upload", HandleUpload)
+	mux.HandleFunc("/health", HandleHealth)
+	mux.HandleFunc("/readiness", HandleReadiness)
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:8080", "https://thebastille.co"},
@@ -89,4 +91,12 @@ func HandleUpload(w http.ResponseWriter, r *http.Request) {
 		Matches:     []MatchID{},
 	}
 	trn.add(strategy)
+}
+
+func HandleHealth(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func HandleReadiness(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }

@@ -86,3 +86,4 @@ If there are no errors, it might work. Go ahead and upload it!
 
 ## Scoring
 The score is on a scale from 0–5, and is calculated by taking the average of the average score per match. This is one step away from Axelrod's method of scoring, where your score is the percentage of the way to a perfect 5.0 average score. We chose to go our route as it gives a tiny bit of insight into the moves of the strategy (and the numbers are bigger, of course).
+  

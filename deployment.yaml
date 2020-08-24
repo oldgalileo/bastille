@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bastille-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bastille-deployment
+  template:
+    metadata:
+      labels:
+        app: bastille-deployment
+    spec:
+      containers:
+        - name: bastille-application
+          image: howardstark/bastille-main:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6024
+          volumeMounts:
+            - name: dockersock
+              mountPath: "/var/run/docker.sock"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 6024
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 20
+            timeoutSeconds: 5
+      volumes:
+        - name: dockersock
+          hostPath:
+            path: /var/run/docker.sock
