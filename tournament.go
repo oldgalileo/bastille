@@ -123,28 +123,28 @@ type TournamentManager struct {
 type MatchID string
 
 type Match struct {
-	ID            MatchID    `json:"id",xml:"id",csv:"id"`
-	PlayerA       StrategyID `json:"player-a",xml:"player-a",csv:"player-a"`
-	PlayerB       StrategyID `json:"player-b",xml:"player-b",csv:"player-b"`
-	Rounds        int        `json:"rounds",xml:"rounds",csv:"rounds"`
-	ScoreA        float32    `json:"score-a",xml:"score-a",csv:"score-a"`
-	ScoreB        float32    `json:"score-b",xml:"score-b",csv:"score-b"`
-	DisqualifiedA bool       `json:"dq-a",xml:"dq-a",csv:"dq-a"`
-	DisqualifiedB bool       `json:"dq-b",xml:"dq-b",csv:"dq-b"`
-	Timestamp     int64      `json:"timestamp",xml:"timestamp",csv:"timestamp"`
+	ID            MatchID    `json:"id",xml:"id",csv:"id",db:"id"`
+	PlayerA       StrategyID `json:"player-a",xml:"player-a",csv:"player-a",db:"player-a"`
+	PlayerB       StrategyID `json:"player-b",xml:"player-b",csv:"player-b",db:"player-b"`
+	Rounds        int        `json:"rounds",xml:"rounds",csv:"rounds",db:"rounds"`
+	ScoreA        float32    `json:"score-a",xml:"score-a",csv:"score-a",db:"score-a"`
+	ScoreB        float32    `json:"score-b",xml:"score-b",csv:"score-b",db:"score-b"`
+	DisqualifiedA bool       `json:"dq-a",xml:"dq-a",csv:"dq-a",db:"dq-a"`
+	DisqualifiedB bool       `json:"dq-b",xml:"dq-b",csv:"dq-b",db:"dq-b"`
+	Timestamp     int64      `json:"timestamp",xml:"timestamp",csv:"timestamp",db:"timestamp"`
 }
 
 type StrategyID string
 
 type Strategy struct {
-	sync.RWMutex `json:"-",xml:"-"`
-	ID           StrategyID `json:"id",xml:"id"`
-	Name         string     `json:"name",xml:"name"`
-	Author       string     `json:"author",xml:"author"`
-	Description  string     `json:"desc",xml:"desc"`
-	Path         string     `json:"path",xml:"path"`
-	Disqualified bool       `json:"disqualified",xml:"disqualified"`
-	Matches      []MatchID  `json:"matches",xml:"matches"`
+	sync.RWMutex 			`json:"-",xml:"-",db:"-"`
+	ID           StrategyID `json:"id",xml:"id",db:"id"`
+	Name         string     `json:"name",xml:"name",db:"name"`
+	Author       string     `json:"author",xml:"author",db:"author"`
+	Description  string     `json:"desc",xml:"desc",db:"description"`
+	Path         string     `json:"path",xml:"path",db:"path"`
+	Disqualified bool       `json:"disqualified",xml:"disqualified",db:"disqualified"`
+	Matches      []MatchID  `json:"matches",xml:"matches",db:"matches"`
 	containers   chan container
 	toggle       chan bool
 }

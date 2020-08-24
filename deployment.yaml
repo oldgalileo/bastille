@@ -15,20 +15,25 @@ spec:
       containers:
         - name: bastille-application
           image: howardstark/bastille-main:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 6024
           volumeMounts:
             - name: dockersock
               mountPath: "/var/run/docker.sock"
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 6024
-              scheme: HTTP
-            initialDelaySeconds: 5
-            periodSeconds: 20
-            timeoutSeconds: 5
+#          livenessProbe:
+#            httpGet:
+#              path: /health
+#              port: 6024
+#              scheme: HTTP
+#            initialDelaySeconds: 5
+#            periodSeconds: 20
+#            timeoutSeconds: 5
+        - name: bastille-web
+          image: howardstark/bastille-web:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
       volumes:
         - name: dockersock
           hostPath:
